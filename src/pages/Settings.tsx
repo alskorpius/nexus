@@ -10,6 +10,7 @@ import {
 import type { BrandingState, ThemeId } from '../lib/theme';
 import { LANGUAGES, saveLanguage, useI18n } from '../lib/i18n';
 import type { Lang } from '../lib/i18n';
+import { NotificationsCard } from '../components/NotificationsCard';
 
 // ── Workspace card ───────────────────────────────────────────────────────────
 
@@ -277,6 +278,9 @@ export function Settings() {
             </div>
           </form>
         </div>
+
+        {/* Notifications */}
+        <NotificationsCard />
 
         {/* Storage info */}
         <div className="card settings-card">

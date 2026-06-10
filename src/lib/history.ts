@@ -42,6 +42,12 @@ interface IncidentRow {
 
 const RETENTION_DAYS = 30;
 
+/** What the incident state machine did with this sample. */
+export type IncidentTransition =
+  | { kind: 'opened'; severity: 'warning' | 'critical'; error: string | null }
+  | { kind: 'closed'; severity: 'warning' | 'critical'; durationMs: number }
+  | null;
+
 // ── Recording ────────────────────────────────────────────────────────────────
 
 /**
@@ -49,12 +55,13 @@ const RETENTION_DAYS = 30;
  * a warning/critical check opens an incident (or escalates an open one),
  * the first healthy check closes it. 'unknown' checks are recorded but do
  * not affect incidents (no endpoint configured / not reachable conclusively).
+ * Returns the transition so callers can dispatch notifications.
  */
 export async function recordHealthCheck(
   projectId: number,
   result: Pick<HealthCheckResult, 'health' | 'latencyMs' | 'httpStatus' | 'error'>,
   checkedAt: string,
-): Promise<void> {
+): Promise<IncidentTransition> {
   const db = await getDb();
 
   await db.execute(
@@ -83,16 +90,24 @@ export async function recordHealthCheck(
         'UPDATE incidents SET severity = $1, checks_count = checks_count + 1 WHERE id = $2',
         [severity, open.id],
       );
-    } else {
-      await db.execute(
-        `INSERT INTO incidents (project_id, started_at, severity, first_error)
-         VALUES ($1, $2, $3, $4)`,
-        [projectId, checkedAt, result.health, result.error],
-      );
+      return null; // escalation/continuation — no separate notification
     }
-  } else if (result.health === 'healthy' && open) {
-    await db.execute('UPDATE incidents SET ended_at = $1 WHERE id = $2', [checkedAt, open.id]);
+    await db.execute(
+      `INSERT INTO incidents (project_id, started_at, severity, first_error)
+       VALUES ($1, $2, $3, $4)`,
+      [projectId, checkedAt, result.health, result.error],
+    );
+    return { kind: 'opened', severity: result.health, error: result.error };
   }
+
+  if (result.health === 'healthy' && open) {
+    await db.execute('UPDATE incidents SET ended_at = $1 WHERE id = $2', [checkedAt, open.id]);
+    const durationMs =
+      new Date(checkedAt).getTime() - new Date(open.startedAt).getTime();
+    return { kind: 'closed', severity: open.severity, durationMs };
+  }
+
+  return null;
 }
 
 /**

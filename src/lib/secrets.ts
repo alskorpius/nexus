@@ -17,4 +17,5 @@ export const secretKeys = {
   gitToken: (id: number) => `project:${id}:git_token`,
   loginCreds: (id: number) => `project:${id}:login_creds`,
   aiAdminKey: (accountId: number) => `ai:${accountId}:admin_key`,
+  notifySecret: (channelId: number) => `notify:${channelId}:secret`,
 };

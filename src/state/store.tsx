@@ -21,6 +21,7 @@ import { fetchGitInfo } from '../adapters/git';
 import { exportProjectBundle, importProjectBundle } from '../lib/bundle';
 import { checkSsl } from '../lib/ssl';
 import { recordHealthCheck, closeOpenIncident, deleteProjectHistory } from '../lib/history';
+import { notifyIncidentTransition, maybeNotifySsl } from '../lib/notify';
 
 export interface Nav {
   page: 'dashboard' | 'projects' | 'project' | 'settings' | 'ai';
@@ -162,7 +163,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       // read-then-write incident logic; failures only log.
       try {
         if (project.healthEndpoint.trim()) {
-          await recordHealthCheck(id, { health, latencyMs, httpStatus, error }, checkedAt);
+          const transition = await recordHealthCheck(
+            id,
+            { health, latencyMs, httpStatus, error },
+            checkedAt,
+          );
+          // Notifications are fire-and-forget — slow webhooks must not
+          // stall the polling cycle.
+          if (transition) {
+            notifyIncidentTransition(project.name, transition).catch(err =>
+              console.warn('Incident notification failed:', err),
+            );
+          }
         } else {
           // Monitoring stopped (endpoint removed) — don't leave an incident
           // open forever.
@@ -171,6 +183,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         console.warn('Failed to record health history:', err);
       }
+
+      maybeNotifySsl(id, project.name, ssl).catch(err =>
+        console.warn('SSL notification failed:', err),
+      );
 
       setStatuses(prev => ({
         ...prev,

@@ -77,6 +77,18 @@ fn secret_delete(key: String) -> Result<(), String> {
 
 // ── 2. HTTP proxy ─────────────────────────────────────────────────────────────
 
+/// Strip the request URL from an error string so secrets embedded in URLs
+/// (bot tokens, webhook paths) never reach logs or the UI.
+fn redact_url(message: &str, url: &str) -> String {
+    let mut out = message.replace(url, "<url>");
+    // reqwest may echo the URL without a trailing slash or with minor
+    // normalization; also redact the host+path portion conservatively.
+    if let Some(stripped) = url.strip_suffix('/') {
+        out = out.replace(stripped, "<url>");
+    }
+    out
+}
+
 #[tauri::command]
 async fn http_request(
     method: String,
@@ -107,7 +119,7 @@ async fn http_request(
     let response = builder
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| redact_url(&e.to_string(), &url))?;
 
     let status = response.status().as_u16();
     let ok = response.status().is_success();
@@ -120,7 +132,10 @@ async fn http_request(
         );
     }
 
-    let body_bytes = response.bytes().await.map_err(|e| e.to_string())?;
+    let body_bytes = response
+        .bytes()
+        .await
+        .map_err(|e| redact_url(&e.to_string(), &url))?;
     let body_str = String::from_utf8_lossy(&body_bytes).into_owned();
 
     Ok(HttpResponse {
@@ -257,6 +272,17 @@ CREATE INDEX IF NOT EXISTS idx_incidents_project_time
   ON incidents(project_id, started_at);
 ";
 
+const DB_MIGRATION_V5_SQL: &str = "
+CREATE TABLE IF NOT EXISTS notification_channels (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  config TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+";
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let migrations = vec![
@@ -284,6 +310,12 @@ pub fn run() {
             sql: DB_MIGRATION_V4_SQL,
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 5,
+            description: "notification_channels for the notification hub",
+            sql: DB_MIGRATION_V5_SQL,
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -293,6 +325,7 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             secret_set,

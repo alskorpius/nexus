@@ -6,6 +6,7 @@ import { detail } from './dict/detail';
 import { tickets } from './dict/tickets';
 import { ai } from './dict/ai';
 import { settings } from './dict/settings';
+import { notify } from './dict/notify';
 
 // Each namespace file exports per-language key maps with identical keys
 // (type-checked in the dict file). `en` is mandatory; other languages are
@@ -22,6 +23,7 @@ const NAMESPACES: Record<string, NamespaceDict> = {
   tickets,
   ai,
   settings,
+  notify,
 };
 
 const ALL_LANGS: Lang[] = ['en', 'uk', 'es', 'de', 'fr', 'pt', 'zh', 'ar'];
