@@ -19,6 +19,9 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     refreshProject,
     refreshing,
     removeProject,
+    updateTicketStatus,
+    sendTicketMessage,
+    loadTicketMessages,
     exportProject,
   } = useStore();
 
@@ -153,6 +156,48 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                   <span className="text-critical">{status.error}</span>
                 </div>
               )}
+              {status?.healthMeta && (
+                <div className="detail-health__row">
+                  <span className="detail-health__label">Reported</span>
+                  <span className="muted">
+                    {[
+                      status.healthMeta.status,
+                      status.healthMeta.app,
+                      status.healthMeta.version && `v${status.healthMeta.version}`,
+                      status.healthMeta.environment,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                </div>
+              )}
+              {status?.healthComponents &&
+                status.healthComponents.length > 0 &&
+                Object.entries(
+                  status.healthComponents.reduce<Record<string, typeof status.healthComponents>>(
+                    (acc, c) => {
+                      (acc[c.group] ??= []).push(c);
+                      return acc;
+                    },
+                    {},
+                  ),
+                ).map(([group, comps]) => (
+                  <div className="detail-health__row detail-health__row--components" key={group}>
+                    <span className="detail-health__label">{group}</span>
+                    <div className="health-chips">
+                      {comps.map(c => (
+                        <span
+                          key={`${c.group}:${c.name}`}
+                          className={`health-chip ${c.ok ? 'health-chip--ok' : 'health-chip--bad'}`}
+                          title={c.error ? `${c.status}: ${c.error}` : c.status}
+                        >
+                          <span className="health-chip__dot" />
+                          {c.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               {!status && (
                 <p className="muted">Not yet checked. Click Refresh.</p>
               )}
@@ -173,7 +218,12 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             </p>
           </div>
         ) : status?.tickets ? (
-          <TicketTable tickets={status.tickets} />
+          <TicketTable
+            tickets={status.tickets}
+            onStatusChange={(ticketId, s) => updateTicketStatus(projectId, ticketId, s)}
+            onSendMessage={(ticketId, m) => sendTicketMessage(projectId, ticketId, m)}
+            onLoadMessages={ticketId => loadTicketMessages(projectId, ticketId)}
+          />
         ) : (
           <div className="card">
             <p className="muted">
@@ -197,6 +247,31 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             {git.failedPipelines !== null && git.failedPipelines > 0 && (
               <div className="alert alert--error">
                 {git.failedPipelines} failed pipeline{git.failedPipelines > 1 ? 's' : ''}
+              </div>
+            )}
+
+            {git.branches.length > 0 && (
+              <div className="card">
+                <h3 className="card__subtitle">Branches ({git.branches.length})</h3>
+                <div className="health-chips">
+                  {git.branches.slice(0, 12).map(b => (
+                    <button
+                      key={b.name}
+                      type="button"
+                      className={`branch-chip${b.default ? ' branch-chip--default' : ''}`}
+                      onClick={() => b.webUrl && openLink(b.webUrl)}
+                      title={b.lastActivity ? `updated ${timeAgo(b.lastActivity)}` : b.name}
+                    >
+                      {b.name}
+                      {b.lastActivity && (
+                        <span className="branch-chip__time">{timeAgo(b.lastActivity)}</span>
+                      )}
+                    </button>
+                  ))}
+                  {git.branches.length > 12 && (
+                    <span className="muted">+{git.branches.length - 12} more</span>
+                  )}
+                </div>
               </div>
             )}
 
@@ -244,7 +319,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               </div>
             )}
 
-            {git.mrs.length === 0 && git.commits.length === 0 && (
+            {git.mrs.length === 0 && git.commits.length === 0 && git.branches.length === 0 && (
               <div className="card">
                 <p className="muted">No recent activity.</p>
               </div>

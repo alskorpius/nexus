@@ -1,14 +1,19 @@
 import { useState } from 'react';
 import type { Ticket } from '../types';
 import { timeAgo } from '../lib/format';
+import { TicketModal } from './TicketModal';
 
 type FilterTab = 'all' | 'open' | 'resolved' | 'closed';
 
 interface TicketTableProps {
   tickets: Ticket[];
+  onStatusChange?: (ticketId: number | string, status: string) => Promise<void>;
+  onSendMessage?: (ticketId: number | string, message: string) => Promise<void>;
+  onLoadMessages?: (ticketId: number | string) => Promise<import('../types').TicketMessage[]>;
 }
 
 const STATUS_LABELS: Record<string, string> = {
+  open: 'Open',
   pending: 'Pending',
   in_progress: 'In Progress',
   resolved: 'Resolved',
@@ -24,6 +29,7 @@ const PRIORITY_LABELS: Record<string, string> = {
 
 function statusClass(status: string): string {
   switch (status) {
+    case 'open': return 'badge badge--blue';
     case 'pending': return 'badge badge--blue';
     case 'in_progress': return 'badge badge--amber';
     case 'resolved': return 'badge badge--green';
@@ -43,11 +49,14 @@ function priorityClass(priority: string): string {
 }
 
 function isOpen(t: Ticket) {
-  return t.status === 'pending' || t.status === 'in_progress';
+  return t.status === 'open' || t.status === 'pending' || t.status === 'in_progress';
 }
 
-export function TicketTable({ tickets }: TicketTableProps) {
+export function TicketTable({ tickets, onStatusChange, onSendMessage, onLoadMessages }: TicketTableProps) {
   const [filter, setFilter] = useState<FilterTab>('all');
+  const [openTicketId, setOpenTicketId] = useState<number | string | null>(null);
+
+  const openTicket = openTicketId !== null ? tickets.find(t => t.id === openTicketId) : undefined;
 
   const counts = {
     all: tickets.length,
@@ -90,7 +99,7 @@ export function TicketTable({ tickets }: TicketTableProps) {
           <p>No tickets in this view.</p>
         </div>
       ) : (
-        <table className="table">
+        <table className="table table--clickable">
           <thead>
             <tr>
               <th>Subject</th>
@@ -101,7 +110,7 @@ export function TicketTable({ tickets }: TicketTableProps) {
           </thead>
           <tbody>
             {filtered.map(ticket => (
-              <tr key={ticket.id}>
+              <tr key={ticket.id} onClick={() => setOpenTicketId(ticket.id)}>
                 <td className="table__subject">
                   <span className="table__subject-text" title={ticket.subject}>
                     {ticket.subject}
@@ -124,6 +133,22 @@ export function TicketTable({ tickets }: TicketTableProps) {
             ))}
           </tbody>
         </table>
+      )}
+
+      {openTicket && (
+        <TicketModal
+          ticket={openTicket}
+          onClose={() => setOpenTicketId(null)}
+          onStatusChange={
+            onStatusChange ? status => onStatusChange(openTicket.id, status) : undefined
+          }
+          onSendMessage={
+            onSendMessage ? message => onSendMessage(openTicket.id, message) : undefined
+          }
+          onLoadMessages={
+            onLoadMessages ? () => onLoadMessages(openTicket.id) : undefined
+          }
+        />
       )}
     </div>
   );

@@ -6,11 +6,17 @@ import React, {
   useState,
   useCallback,
 } from 'react';
-import type { Project, ProjectDraft, ProjectStatus, HealthState } from '../types';
+import type { Project, ProjectDraft, ProjectStatus, HealthState, HealthComponent, HealthMeta } from '../types';
 import { listProjects, saveProject, deleteProject, getSetting, setSetting } from '../lib/db';
 import { setSecret, deleteSecret, secretKeys } from '../lib/secrets';
 import { checkHealth } from '../lib/health';
-import { fetchTickets } from '../adapters/tickets';
+import {
+  fetchTickets,
+  updateTicketStatus as apiUpdateTicketStatus,
+  addTicketMessage as apiAddTicketMessage,
+  fetchTicketMessages as apiFetchTicketMessages,
+} from '../adapters/tickets';
+import type { TicketMessage } from '../types';
 import { fetchGitInfo } from '../adapters/git';
 import { exportProjectBundle, importProjectBundle } from '../lib/bundle';
 
@@ -33,6 +39,9 @@ export interface StoreCtx {
     secrets: { apiToken?: string; gitToken?: string; loginCreds?: string }
   ): Promise<Project>;
   removeProject(id: number): Promise<void>;
+  updateTicketStatus(projectId: number, ticketId: number | string, status: string): Promise<void>;
+  sendTicketMessage(projectId: number, ticketId: number | string, message: string): Promise<void>;
+  loadTicketMessages(projectId: number, ticketId: number | string): Promise<TicketMessage[]>;
   exportProject(id: number, passphrase: string): Promise<string | null>;
   importProject(passphrase: string): Promise<Project | null>;
   pollIntervalSec: number;
@@ -122,12 +131,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       let latencyMs: number | null = null;
       let httpStatus: number | null = null;
       let error: string | null = null;
+      let healthComponents: HealthComponent[] | null = null;
+      let healthMeta: HealthMeta | null = null;
 
       if (healthResult.status === 'fulfilled') {
         health = healthResult.value.health;
         latencyMs = healthResult.value.latencyMs;
         httpStatus = healthResult.value.httpStatus;
         error = healthResult.value.error;
+        healthComponents = healthResult.value.components;
+        healthMeta = healthResult.value.meta;
       } else {
         error = String(healthResult.reason);
       }
@@ -147,6 +160,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           latencyMs,
           httpStatus,
           error,
+          healthComponents,
+          healthMeta,
           checkedAt,
           tickets,
           ticketsError,
@@ -217,6 +232,47 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const updateTicketStatus = useCallback(
+    async (projectId: number, ticketId: number | string, status: string) => {
+      const project = projectsRef.current.find(p => p.id === projectId);
+      if (!project) throw new Error('Project not found');
+
+      await apiUpdateTicketStatus(project, ticketId, status);
+
+      // Optimistic local update; the next poll re-syncs from the API
+      setStatuses(prev => {
+        const cur = prev[projectId];
+        if (!cur?.tickets) return prev;
+        return {
+          ...prev,
+          [projectId]: {
+            ...cur,
+            tickets: cur.tickets.map(t => (t.id === ticketId ? { ...t, status } : t)),
+          },
+        };
+      });
+    },
+    []
+  );
+
+  const sendTicketMessage = useCallback(
+    async (projectId: number, ticketId: number | string, message: string) => {
+      const project = projectsRef.current.find(p => p.id === projectId);
+      if (!project) throw new Error('Project not found');
+      await apiAddTicketMessage(project, ticketId, message);
+    },
+    []
+  );
+
+  const loadTicketMessages = useCallback(
+    async (projectId: number, ticketId: number | string): Promise<TicketMessage[]> => {
+      const project = projectsRef.current.find(p => p.id === projectId);
+      if (!project) throw new Error('Project not found');
+      return apiFetchTicketMessages(project, ticketId);
+    },
+    []
+  );
+
   const exportProject = useCallback(
     async (id: number, passphrase: string): Promise<string | null> => {
       const project = projectsRef.current.find(p => p.id === id);
@@ -273,6 +329,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     refreshAll,
     saveProjectWithSecrets,
     removeProject,
+    updateTicketStatus,
+    sendTicketMessage,
+    loadTicketMessages,
     exportProject,
     importProject,
     pollIntervalSec,

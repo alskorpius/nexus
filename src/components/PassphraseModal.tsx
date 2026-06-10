@@ -26,6 +26,10 @@ export function PassphraseModal({ title, mode, onConfirm, onCancel }: Passphrase
     return () => window.removeEventListener('keydown', handler);
   }, [onCancel]);
 
+  // Close on outside click only when the press also started on the overlay,
+  // so a drag from inside an input to the overlay doesn't dismiss the modal
+  const mouseDownOnOverlay = useRef(false);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!passphrase.trim()) {
@@ -40,7 +44,14 @@ export function PassphraseModal({ title, mode, onConfirm, onCancel }: Passphrase
   };
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
+    <div
+      className="modal-overlay"
+      onMouseDown={e => { mouseDownOnOverlay.current = e.target === e.currentTarget; }}
+      onClick={e => {
+        if (e.target === e.currentTarget && mouseDownOnOverlay.current) onCancel();
+        mouseDownOnOverlay.current = false;
+      }}
+    >
       <div className="modal">
         <div className="modal__header">
           <h2 className="modal__title">{title}</h2>

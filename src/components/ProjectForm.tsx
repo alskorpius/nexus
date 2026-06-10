@@ -1,6 +1,30 @@
 import { useState, useEffect } from 'react';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import type { Project, ProjectDraft, AuthMethod, GitProvider } from '../types';
 import { useStore } from '../state/store';
+
+// Token-creation guidance per git provider; the GitLab link is derived from Repo URL
+function gitTokenHelp(
+  provider: GitProvider,
+  repoUrl: string,
+): { text: string; url: string | null; linkLabel: string } | null {
+  if (provider === 'gitlab') {
+    const repo = repoUrl.trim().replace(/\.git$/, '').replace(/\/+$/, '');
+    return {
+      text: 'Project Access Token — role: Reporter, scopes: read_api.',
+      url: repo.startsWith('http') ? `${repo}/-/settings/access_tokens` : null,
+      linkLabel: 'Open project access tokens ↗',
+    };
+  }
+  if (provider === 'github') {
+    return {
+      text: 'Fine-grained personal access token — read-only: Contents, Pull requests, Actions.',
+      url: 'https://github.com/settings/personal-access-tokens/new',
+      linkLabel: 'Create token on GitHub ↗',
+    };
+  }
+  return null;
+}
 
 interface ProjectFormProps {
   project?: Project;
@@ -122,7 +146,8 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
   const secretPlaceholder = isEdit ? '•••• stored — leave empty to keep' : '';
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    // No click-outside close: the form is large and accidental clicks would lose input
+    <div className="modal-overlay">
       <div className="modal modal--large">
         <div className="modal__header">
           <h2 className="modal__title">{isEdit ? `Edit ${project!.name}` : 'Add Project'}</h2>
@@ -400,6 +425,31 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
                     autoComplete="new-password"
                     placeholder={secretPlaceholder}
                   />
+                  {(() => {
+                    const help = gitTokenHelp(draft.gitProvider, draft.repoUrl);
+                    if (!help) return null;
+                    return (
+                      <p className="form-hint form-hint--block">
+                        {help.text}
+                        {help.url ? (
+                          <>
+                            {' '}
+                            <button
+                              type="button"
+                              className="form-hint__link"
+                              onClick={() => openUrl(help.url!)}
+                            >
+                              {help.linkLabel}
+                            </button>
+                          </>
+                        ) : (
+                          draft.gitProvider === 'gitlab' && (
+                            <> Fill in Repo URL to get a direct link (Settings → Access Tokens).</>
+                          )
+                        )}
+                      </p>
+                    );
+                  })()}
                 </div>
               )}
             </fieldset>

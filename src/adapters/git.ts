@@ -1,4 +1,4 @@
-import type { Project, GitInfo, GitCommit, GitMr } from '../types';
+import type { Project, GitInfo, GitCommit, GitMr, GitBranch } from '../types';
 import { httpRequest, parseJson } from '../lib/http';
 import { getSecret, secretKeys } from '../lib/secrets';
 
@@ -59,6 +59,14 @@ interface GithubPrRaw {
   user?: { login?: string };
 }
 
+interface GithubBranchRaw {
+  name: string;
+}
+
+interface GithubRepoRaw {
+  default_branch?: string;
+}
+
 async function fetchGithub(slug: string, token: string | null): Promise<GitInfo> {
   const base = 'https://api.github.com';
   const commonHeaders: Record<string, string> = {
@@ -69,7 +77,7 @@ async function fetchGithub(slug: string, token: string | null): Promise<GitInfo>
     commonHeaders['Authorization'] = `Bearer ${token}`;
   }
 
-  const [commitsResult, prsResult] = await Promise.allSettled([
+  const [commitsResult, prsResult, branchesResult, repoResult] = await Promise.allSettled([
     httpRequest({
       method: 'GET',
       url: `${base}/repos/${slug}/commits?per_page=5`,
@@ -79,6 +87,18 @@ async function fetchGithub(slug: string, token: string | null): Promise<GitInfo>
     httpRequest({
       method: 'GET',
       url: `${base}/repos/${slug}/pulls?state=open&per_page=20`,
+      headers: commonHeaders,
+      timeoutMs: 10_000,
+    }),
+    httpRequest({
+      method: 'GET',
+      url: `${base}/repos/${slug}/branches?per_page=100`,
+      headers: commonHeaders,
+      timeoutMs: 10_000,
+    }),
+    httpRequest({
+      method: 'GET',
+      url: `${base}/repos/${slug}`,
       headers: commonHeaders,
       timeoutMs: 10_000,
     }),
@@ -126,7 +146,25 @@ async function fetchGithub(slug: string, token: string | null): Promise<GitInfo>
     }));
   }
 
-  return { openMrCount, mrs, commits, failedPipelines: null };
+  let defaultBranch = '';
+  if (repoResult.status === 'fulfilled' && repoResult.value.ok) {
+    defaultBranch = parseJson<GithubRepoRaw>(repoResult.value)?.default_branch ?? '';
+  }
+
+  let branches: GitBranch[] = [];
+  if (branchesResult.status === 'fulfilled' && branchesResult.value.ok) {
+    const raw = parseJson<GithubBranchRaw[]>(branchesResult.value) ?? [];
+    branches = raw.map((b) => ({
+      name: b.name,
+      default: b.name === defaultBranch,
+      lastActivity: null, // GitHub branches API has no commit dates without extra requests
+      webUrl: `https://github.com/${slug}/tree/${encodeURIComponent(b.name)}`,
+    }));
+    // Default branch first, then alphabetical
+    branches.sort((a, b) => Number(b.default) - Number(a.default) || a.name.localeCompare(b.name));
+  }
+
+  return { openMrCount, mrs, commits, branches, failedPipelines: null };
 }
 
 // ---------------------------------------------------------------------------
@@ -151,6 +189,12 @@ interface GitlabPipelineRaw {
   status: string;
 }
 
+interface GitlabBranchRaw {
+  name: string;
+  default?: boolean;
+  commit?: { committed_date?: string; web_url?: string };
+}
+
 async function fetchGitlab(
   host: string,
   projectId: string,
@@ -163,7 +207,7 @@ async function fetchGitlab(
     headers['PRIVATE-TOKEN'] = token;
   }
 
-  const [commitsResult, mrsResult, pipelinesResult] = await Promise.allSettled([
+  const [commitsResult, mrsResult, pipelinesResult, branchesResult] = await Promise.allSettled([
     httpRequest({
       method: 'GET',
       url: `${base}/repository/commits?per_page=5`,
@@ -179,6 +223,12 @@ async function fetchGitlab(
     httpRequest({
       method: 'GET',
       url: `${base}/pipelines?per_page=10`,
+      headers,
+      timeoutMs: 10_000,
+    }),
+    httpRequest({
+      method: 'GET',
+      url: `${base}/repository/branches?per_page=100`,
       headers,
       timeoutMs: 10_000,
     }),
@@ -240,7 +290,25 @@ async function fetchGitlab(
     }
   }
 
-  return { openMrCount, mrs, commits, failedPipelines };
+  let branches: GitBranch[] = [];
+  if (branchesResult.status === 'fulfilled' && branchesResult.value.ok) {
+    const raw = parseJson<GitlabBranchRaw[]>(branchesResult.value) ?? [];
+    branches = raw.map((b) => ({
+      name: b.name,
+      default: b.default ?? false,
+      lastActivity: b.commit?.committed_date ?? null,
+      // The branches API has no branch URL; derive it from the commit URL
+      webUrl: b.commit?.web_url
+        ? b.commit.web_url.replace(/\/-\/commit\/.*$/, `/-/tree/${encodeURIComponent(b.name)}`)
+        : null,
+    }));
+    branches.sort((a, b) => {
+      if (a.default !== b.default) return Number(b.default) - Number(a.default);
+      return (b.lastActivity ?? '').localeCompare(a.lastActivity ?? '');
+    });
+  }
+
+  return { openMrCount, mrs, commits, branches, failedPipelines };
 }
 
 // ---------------------------------------------------------------------------
