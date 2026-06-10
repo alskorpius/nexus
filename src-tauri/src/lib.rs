@@ -231,6 +231,32 @@ CREATE TABLE IF NOT EXISTS ai_accounts (
 );
 ";
 
+const DB_MIGRATION_V4_SQL: &str = "
+CREATE TABLE IF NOT EXISTS health_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL,
+  checked_at TEXT NOT NULL,
+  health TEXT NOT NULL,
+  latency_ms INTEGER,
+  http_status INTEGER,
+  error TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_health_history_project_time
+  ON health_history(project_id, checked_at);
+
+CREATE TABLE IF NOT EXISTS incidents (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL,
+  started_at TEXT NOT NULL,
+  ended_at TEXT,
+  severity TEXT NOT NULL,
+  first_error TEXT,
+  checks_count INTEGER NOT NULL DEFAULT 1
+);
+CREATE INDEX IF NOT EXISTS idx_incidents_project_time
+  ON incidents(project_id, started_at);
+";
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let migrations = vec![
@@ -250,6 +276,12 @@ pub fn run() {
             version: 3,
             description: "ai_accounts for provider usage dashboard",
             sql: DB_MIGRATION_V3_SQL,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 4,
+            description: "health_history + incidents for health timeline",
+            sql: DB_MIGRATION_V4_SQL,
             kind: MigrationKind::Up,
         },
     ];

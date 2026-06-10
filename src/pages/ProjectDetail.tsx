@@ -6,6 +6,7 @@ import { ScoreBadge } from '../components/ScoreBadge';
 import { TicketTable } from '../components/TicketTable';
 import { ProjectForm } from '../components/ProjectForm';
 import { PassphraseModal } from '../components/PassphraseModal';
+import { HealthHistoryCard } from '../components/HealthHistoryCard';
 import { timeAgo } from '../lib/format';
 import { computeHealthScore } from '../lib/score';
 import { useI18n, getLocale } from '../lib/i18n';
@@ -279,7 +280,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         </div>
       )}
 
-      {/* 3. Support Tickets */}
+      {/* 3. Health History */}
+      <div className="section">
+        <h2 className="section__title">{t('detail.history.title')}</h2>
+        <HealthHistoryCard projectId={projectId} checkedAt={status?.checkedAt} />
+      </div>
+
+      {/* 4. Support Tickets */}
       <div className="section">
         <h2 className="section__title">{t('detail.tickets.title')}</h2>
         {hasTicketsError ? (

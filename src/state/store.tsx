@@ -20,6 +20,7 @@ import type { TicketMessage } from '../types';
 import { fetchGitInfo } from '../adapters/git';
 import { exportProjectBundle, importProjectBundle } from '../lib/bundle';
 import { checkSsl } from '../lib/ssl';
+import { recordHealthCheck, closeOpenIncident, deleteProjectHistory } from '../lib/history';
 
 export interface Nav {
   page: 'dashboard' | 'projects' | 'project' | 'settings' | 'ai';
@@ -156,6 +157,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       const ssl = sslResult.status === 'fulfilled' ? sslResult.value : null;
 
+      // Persist the sample + incident transitions. Awaited (inside the
+      // in-flight guard) so two poll cycles can't interleave the
+      // read-then-write incident logic; failures only log.
+      try {
+        if (project.healthEndpoint.trim()) {
+          await recordHealthCheck(id, { health, latencyMs, httpStatus, error }, checkedAt);
+        } else {
+          // Monitoring stopped (endpoint removed) — don't leave an incident
+          // open forever.
+          await closeOpenIncident(id, checkedAt);
+        }
+      } catch (err) {
+        console.warn('Failed to record health history:', err);
+      }
+
       setStatuses(prev => ({
         ...prev,
         [id]: {
@@ -223,11 +239,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const removeProject = useCallback(async (id: number) => {
     await deleteProject(id);
-    // Best-effort secret cleanup
+    // Best-effort secret + history cleanup
     await Promise.allSettled([
       deleteSecret(secretKeys.apiToken(id)),
       deleteSecret(secretKeys.gitToken(id)),
       deleteSecret(secretKeys.loginCreds(id)),
+      deleteProjectHistory(id),
     ]);
     setProjects(prev => prev.filter(p => p.id !== id));
     setStatuses(prev => {

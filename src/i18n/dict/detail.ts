@@ -78,6 +78,22 @@ const en = {
 
   // Export modal title
   'export.modalTitle': 'Export "{name}"',
+
+  // Section: Health History
+  'history.title': 'Health History',
+  'history.loading': 'Loading…',
+  'history.collecting': 'Collecting data — checks are recorded every poll interval.',
+  'history.ticksLabel': 'Last 60 health checks',
+  'history.uptime24h': '24h',
+  'history.uptime7d': '7d',
+  'history.uptime30d': '30d',
+  'history.incidents': 'Incidents',
+  'history.noIncidents': 'No incidents recorded.',
+  'history.ongoing': 'Ongoing',
+  'history.mttr': 'MTTR: {duration}',
+  'history.unit.m': 'm',
+  'history.unit.h': 'h',
+  'history.unit.d': 'd',
 };
 
 const uk: Record<keyof typeof en, string> = {
@@ -145,6 +161,22 @@ const uk: Record<keyof typeof en, string> = {
   'notFound.back': 'До проєктів',
 
   'export.modalTitle': 'Експорт «{name}»',
+
+  // Section: Health History
+  'history.title': "Історія здоров’я",
+  'history.loading': 'Завантаження…',
+  'history.collecting': 'Збір даних — перевірки записуються при кожному опитуванні.',
+  'history.ticksLabel': 'Останні 60 перевірок',
+  'history.uptime24h': '24г',
+  'history.uptime7d': '7д',
+  'history.uptime30d': '30д',
+  'history.incidents': 'Інциденти',
+  'history.noIncidents': 'Інцидентів не зафіксовано.',
+  'history.ongoing': 'Триває',
+  'history.mttr': 'MTTR: {duration}',
+  'history.unit.m': 'хв',
+  'history.unit.h': 'год',
+  'history.unit.d': 'д',
 };
 
 const es: Record<keyof typeof en, string> = {
@@ -225,6 +257,22 @@ const es: Record<keyof typeof en, string> = {
 
   // Export modal title
   'export.modalTitle': 'Exportar «{name}»',
+
+  // Section: Health History
+  'history.title': 'Historial de salud',
+  'history.loading': 'Cargando…',
+  'history.collecting': 'Recopilando datos — las comprobaciones se registran en cada ciclo de sondeo.',
+  'history.ticksLabel': 'Últimas 60 comprobaciones',
+  'history.uptime24h': '24h',
+  'history.uptime7d': '7d',
+  'history.uptime30d': '30d',
+  'history.incidents': 'Incidentes',
+  'history.noIncidents': 'No se han registrado incidentes.',
+  'history.ongoing': 'En curso',
+  'history.mttr': 'MTTR: {duration}',
+  'history.unit.m': 'm',
+  'history.unit.h': 'h',
+  'history.unit.d': 'd',
 };
 
 const de: Record<keyof typeof en, string> = {
@@ -305,6 +353,22 @@ const de: Record<keyof typeof en, string> = {
 
   // Export modal title
   'export.modalTitle': '„{name}" exportieren',
+
+  // Section: Health History
+  'history.title': 'Zustandsverlauf',
+  'history.loading': 'Laden…',
+  'history.collecting': 'Daten werden gesammelt — Prüfungen werden bei jedem Abrufzyklus gespeichert.',
+  'history.ticksLabel': 'Letzte 60 Prüfungen',
+  'history.uptime24h': '24h',
+  'history.uptime7d': '7T',
+  'history.uptime30d': '30T',
+  'history.incidents': 'Vorfälle',
+  'history.noIncidents': 'Keine Vorfälle aufgezeichnet.',
+  'history.ongoing': 'Laufend',
+  'history.mttr': 'MTTR: {duration}',
+  'history.unit.m': 'Min',
+  'history.unit.h': 'Std',
+  'history.unit.d': 'T',
 };
 
 const fr: Record<keyof typeof en, string> = {
@@ -385,6 +449,22 @@ const fr: Record<keyof typeof en, string> = {
 
   // Export modal title
   'export.modalTitle': 'Exporter « {name} »',
+
+  // Section: Health History
+  'history.title': 'Historique de santé',
+  'history.loading': 'Chargement…',
+  'history.collecting': 'Collecte des données — les vérifications sont enregistrées à chaque cycle d\'interrogation.',
+  'history.ticksLabel': '60 dernières vérifications',
+  'history.uptime24h': '24h',
+  'history.uptime7d': '7j',
+  'history.uptime30d': '30j',
+  'history.incidents': 'Incidents',
+  'history.noIncidents': 'Aucun incident enregistré.',
+  'history.ongoing': 'En cours',
+  'history.mttr': 'MTTR : {duration}',
+  'history.unit.m': 'min',
+  'history.unit.h': 'h',
+  'history.unit.d': 'j',
 };
 
 const pt: Record<keyof typeof en, string> = {
@@ -465,6 +545,22 @@ const pt: Record<keyof typeof en, string> = {
 
   // Export modal title
   'export.modalTitle': 'Exportar "{name}"',
+
+  // Section: Health History
+  'history.title': 'Histórico de saúde',
+  'history.loading': 'Carregando…',
+  'history.collecting': 'Coletando dados — as verificações são registradas a cada ciclo de sondagem.',
+  'history.ticksLabel': 'Últimas 60 verificações',
+  'history.uptime24h': '24h',
+  'history.uptime7d': '7d',
+  'history.uptime30d': '30d',
+  'history.incidents': 'Incidentes',
+  'history.noIncidents': 'Nenhum incidente registrado.',
+  'history.ongoing': 'Em andamento',
+  'history.mttr': 'MTTR: {duration}',
+  'history.unit.m': 'min',
+  'history.unit.h': 'h',
+  'history.unit.d': 'd',
 };
 
 const zh: Record<keyof typeof en, string> = {
@@ -545,6 +641,22 @@ const zh: Record<keyof typeof en, string> = {
 
   // Export modal title
   'export.modalTitle': '导出"{name}"',
+
+  // Section: Health History
+  'history.title': '健康历史',
+  'history.loading': '加载中…',
+  'history.collecting': '正在收集数据 — 每次轮询周期都会记录检查结果。',
+  'history.ticksLabel': '最近 60 次检查',
+  'history.uptime24h': '24小时',
+  'history.uptime7d': '7天',
+  'history.uptime30d': '30天',
+  'history.incidents': '事件',
+  'history.noIncidents': '未记录任何事故。',
+  'history.ongoing': '进行中',
+  'history.mttr': 'MTTR：{duration}',
+  'history.unit.m': '分',
+  'history.unit.h': '时',
+  'history.unit.d': '天',
 };
 
 const ar: Record<keyof typeof en, string> = {
@@ -625,6 +737,22 @@ const ar: Record<keyof typeof en, string> = {
 
   // Export modal title
   'export.modalTitle': 'تصدير "{name}"',
+
+  // Section: Health History
+  'history.title': 'سجل الحالة الصحية',
+  'history.loading': 'جارٍ التحميل…',
+  'history.collecting': 'جمع البيانات — يتم تسجيل الفحوصات في كل دورة استطلاع.',
+  'history.ticksLabel': 'آخر 60 فحصًا',
+  'history.uptime24h': '24س',
+  'history.uptime7d': '7أ',
+  'history.uptime30d': '30أ',
+  'history.incidents': 'الحوادث',
+  'history.noIncidents': 'لم يتم تسجيل أي حوادث.',
+  'history.ongoing': 'جارٍ',
+  'history.mttr': 'MTTR: {duration}',
+  'history.unit.m': 'د',
+  'history.unit.h': 'س',
+  'history.unit.d': 'أ',
 };
 
 export const detail = { en, uk, es, de, fr, pt, zh, ar };

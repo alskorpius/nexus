@@ -1451,6 +1451,158 @@ input, select, textarea { font-family: var(--font-sans); }
   color: var(--accent-hover);
 }
 
+/* ── Health History Card ──────────────────────────────────────────────── */
+.health-history-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Tick strip */
+.history-ticks {
+  display: flex;
+  flex-direction: row;
+  gap: 2px;
+  align-items: flex-end;
+  height: 28px;
+}
+
+.history-tick {
+  flex: 0 0 5px;
+  width: 5px;
+  height: 24px;
+  border-radius: 3px;
+  opacity: 0.85;
+  cursor: default;
+  transition: opacity var(--transition);
+}
+
+.history-tick:hover {
+  opacity: 1;
+}
+
+/* Uptime row */
+.history-uptime-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.history-uptime-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.history-uptime-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.history-uptime-value {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.history-uptime-sep {
+  width: 1px;
+  height: 28px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* Incidents section */
+.history-incidents {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.history-incidents__heading {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  margin-bottom: 2px;
+}
+
+.history-incident-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.history-incident-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.history-incident-row:last-child {
+  border-bottom: none;
+}
+
+.history-incident__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.history-incident__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.history-incident__meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.history-incident__error {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: block;
+}
+
+/* Ongoing badge */
+.history-ongoing-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--accent-dim);
+  color: var(--accent-hover);
+  border: 1px solid rgba(79, 168, 224, 0.2);
+}
+
+/* MTTR line */
+.history-mttr {
+  font-size: 12px;
+  margin-top: var(--space-1);
+  font-family: var(--font-mono);
+}
+
 /* ── Logo upload area ─────────────────────────────────────────────────── */
 .logo-upload-row {
   display: flex;
