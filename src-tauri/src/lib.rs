@@ -1,3 +1,5 @@
+mod ssl;
+
 use std::collections::HashMap;
 use std::sync::OnceLock;
 use std::time::Duration;
@@ -220,6 +222,15 @@ ALTER TABLE projects ADD COLUMN login_endpoint TEXT NOT NULL DEFAULT '';
 ALTER TABLE projects ADD COLUMN token_field TEXT NOT NULL DEFAULT '';
 ";
 
+const DB_MIGRATION_V3_SQL: &str = "
+CREATE TABLE IF NOT EXISTS ai_accounts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+";
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let migrations = vec![
@@ -233,6 +244,12 @@ pub fn run() {
             version: 2,
             description: "generic login auth: login_endpoint + token_field",
             sql: DB_MIGRATION_V2_SQL,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 3,
+            description: "ai_accounts for provider usage dashboard",
+            sql: DB_MIGRATION_V3_SQL,
             kind: MigrationKind::Up,
         },
     ];
@@ -252,6 +269,7 @@ pub fn run() {
             http_request,
             export_bundle,
             import_bundle,
+            ssl::ssl_check,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

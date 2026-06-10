@@ -16,4 +16,5 @@ export const secretKeys = {
   apiToken: (id: number) => `project:${id}:api_token`,
   gitToken: (id: number) => `project:${id}:git_token`,
   loginCreds: (id: number) => `project:${id}:login_creds`,
+  aiAdminKey: (accountId: number) => `ai:${accountId}:admin_key`,
 };

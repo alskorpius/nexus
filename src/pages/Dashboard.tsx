@@ -1,6 +1,8 @@
 import { useStore } from '../state/store';
 import { StatusPill } from '../components/StatusPill';
+import { ScoreBadge } from '../components/ScoreBadge';
 import { timeAgo } from '../lib/format';
+import { computeHealthScore } from '../lib/score';
 import type { Ticket } from '../types';
 
 function isOpen(t: Ticket) {
@@ -109,6 +111,10 @@ export function Dashboard() {
             const mrCount = status?.git?.openMrCount ?? 0;
             const isRefreshing = refreshing[project.id];
 
+            const scoreData = status ? computeHealthScore(status) : null;
+            const sslDaysLeft = status?.ssl?.daysLeft ?? null;
+            const sslExpiringSoon = sslDaysLeft !== null && sslDaysLeft < 30;
+
             return (
               <div
                 key={project.id}
@@ -147,6 +153,31 @@ export function Dashboard() {
                     <span className="muted">0 MRs</span>
                   )}
                 </div>
+                <div className="project-row__score">
+                  {scoreData ? (
+                    <ScoreBadge score={scoreData.score} size="sm" />
+                  ) : (
+                    <span className="muted">—</span>
+                  )}
+                </div>
+                {sslExpiringSoon && (
+                  <div className="project-row__ssl-warn">
+                    <span
+                      className="badge"
+                      style={{
+                        background: sslDaysLeft !== null && sslDaysLeft < 7
+                          ? 'var(--red-badge-bg)'
+                          : 'var(--amber-badge-bg)',
+                        color: sslDaysLeft !== null && sslDaysLeft < 7
+                          ? 'var(--red-badge-text)'
+                          : 'var(--amber-badge-text)',
+                      }}
+                      title={`SSL expires in ${sslDaysLeft} days`}
+                    >
+                      SSL {sslDaysLeft}d
+                    </span>
+                  </div>
+                )}
                 <div className="project-row__time">
                   {status?.checkedAt ? (
                     <span className="muted">{timeAgo(status.checkedAt)}</span>

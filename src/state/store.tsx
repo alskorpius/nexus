@@ -19,9 +19,10 @@ import {
 import type { TicketMessage } from '../types';
 import { fetchGitInfo } from '../adapters/git';
 import { exportProjectBundle, importProjectBundle } from '../lib/bundle';
+import { checkSsl } from '../lib/ssl';
 
 export interface Nav {
-  page: 'dashboard' | 'projects' | 'project' | 'settings';
+  page: 'dashboard' | 'projects' | 'project' | 'settings' | 'ai';
   projectId?: number;
 }
 
@@ -121,10 +122,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }
 
       const checkedAt = new Date().toISOString();
-      const [healthResult, ticketsResult, gitResult] = await Promise.allSettled([
+      const [healthResult, ticketsResult, gitResult, sslResult] = await Promise.allSettled([
         checkHealth(project),
         fetchTickets(project),
         fetchGitInfo(project),
+        checkSsl(project),
       ]);
 
       let health: HealthState = 'unknown';
@@ -152,6 +154,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const git = gitResult.status === 'fulfilled' ? gitResult.value : null;
       const gitError = gitResult.status === 'rejected' ? String(gitResult.reason) : null;
 
+      const ssl = sslResult.status === 'fulfilled' ? sslResult.value : null;
+
       setStatuses(prev => ({
         ...prev,
         [id]: {
@@ -167,6 +171,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           ticketsError,
           git,
           gitError,
+          ssl,
         },
       }));
 

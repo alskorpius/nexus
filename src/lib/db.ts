@@ -155,3 +155,59 @@ export async function setSetting(key: string, value: string): Promise<void> {
     [key, value],
   );
 }
+
+// ---------------------------------------------------------------------------
+// AI Accounts
+// ---------------------------------------------------------------------------
+
+export interface AiAccount {
+  id: number;
+  name: string;
+  provider: 'anthropic' | 'openai';
+  createdAt: string;
+}
+
+interface AiAccountRow {
+  id: number;
+  name: string;
+  provider: string;
+  created_at: string;
+}
+
+function mapAiAccountRow(row: AiAccountRow): AiAccount {
+  return {
+    id: row.id,
+    name: row.name,
+    provider: row.provider as AiAccount['provider'],
+    createdAt: row.created_at,
+  };
+}
+
+export async function listAiAccounts(): Promise<AiAccount[]> {
+  const db = await getDb();
+  const rows = await db.select<AiAccountRow[]>(
+    'SELECT * FROM ai_accounts ORDER BY name',
+  );
+  return rows.map(mapAiAccountRow);
+}
+
+export async function saveAiAccount(
+  draft: Pick<AiAccount, 'name' | 'provider'>,
+): Promise<AiAccount> {
+  const db = await getDb();
+  const result = await db.execute(
+    'INSERT INTO ai_accounts (name, provider) VALUES ($1, $2)',
+    [draft.name, draft.provider],
+  );
+  const rows = await db.select<AiAccountRow[]>(
+    'SELECT * FROM ai_accounts WHERE id = $1',
+    [result.lastInsertId],
+  );
+  if (rows.length === 0) throw new Error('Failed to retrieve newly inserted ai_account');
+  return mapAiAccountRow(rows[0]);
+}
+
+export async function deleteAiAccount(id: number): Promise<void> {
+  const db = await getDb();
+  await db.execute('DELETE FROM ai_accounts WHERE id = $1', [id]);
+}

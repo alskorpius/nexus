@@ -75,6 +75,15 @@ export interface HealthMeta {
   environment: string | null;
 }
 
+// TLS certificate expiry info for the project's primary host
+export interface SslInfo {
+  host: string;
+  expiresAt: string | null;
+  daysLeft: number | null;
+  issuer: string | null;
+  error: string | null;
+}
+
 export interface ProjectStatus {
   projectId: number;
   health: HealthState;
@@ -88,6 +97,7 @@ export interface ProjectStatus {
   ticketsError: string | null;
   git: GitInfo | null;
   gitError: string | null;
+  ssl: SslInfo | null;
 }
 
 export interface HttpResponse {

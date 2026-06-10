@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useStore } from '../state/store';
 import { StatusPill } from '../components/StatusPill';
+import { ScoreBadge } from '../components/ScoreBadge';
 import { TicketTable } from '../components/TicketTable';
 import { ProjectForm } from '../components/ProjectForm';
 import { PassphraseModal } from '../components/PassphraseModal';
 import { timeAgo } from '../lib/format';
+import { computeHealthScore } from '../lib/score';
 
 interface ProjectDetailProps {
   projectId: number;
@@ -74,6 +76,8 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const hasGitError = Boolean(status?.gitError);
   const hasTicketsError = Boolean(status?.ticketsError);
   const hasLinks = project.docsUrl || project.repoUrl || project.deployEndpoint;
+  const scoreData = status ? computeHealthScore(status) : null;
+  const ssl = status?.ssl ?? null;
 
   return (
     <div className="page">
@@ -96,6 +100,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         <div className="page__header-right">
           <div className="detail-meta">
             <StatusPill health={status?.health ?? 'unknown'} />
+            {scoreData && <ScoreBadge score={scoreData.score} size="md" />}
             {status?.latencyMs != null && (
               <span className="detail-meta__latency muted">{status.latencyMs}ms</span>
             )}
@@ -208,7 +213,70 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         </div>
       </div>
 
-      {/* 2. Support Tickets */}
+      {/* 2. SSL Certificate */}
+      {ssl && (
+        <div className="section">
+          <h2 className="section__title">SSL Certificate</h2>
+          <div className="card detail-health">
+            <div className="detail-health__row">
+              <span className="detail-health__label">Host</span>
+              <span className="mono muted">{ssl.host}</span>
+            </div>
+            {ssl.error && !ssl.expiresAt ? (
+              <div className="detail-health__row detail-health__row--error">
+                <span className="detail-health__label">Error</span>
+                <span className="muted">{ssl.error}</span>
+              </div>
+            ) : (
+              <>
+                {ssl.issuer && (
+                  <div className="detail-health__row">
+                    <span className="detail-health__label">Issuer</span>
+                    <span className="muted">{ssl.issuer}</span>
+                  </div>
+                )}
+                {ssl.expiresAt && (
+                  <div className="detail-health__row">
+                    <span className="detail-health__label">Expires</span>
+                    <span className="muted">
+                      {new Date(ssl.expiresAt).toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </span>
+                  </div>
+                )}
+                {ssl.daysLeft !== null && (
+                  <div className="detail-health__row">
+                    <span className="detail-health__label">Days left</span>
+                    <span
+                      style={{
+                        color: ssl.daysLeft < 7
+                          ? 'var(--critical)'
+                          : ssl.daysLeft < 30
+                          ? 'var(--warning)'
+                          : 'var(--healthy)',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {ssl.daysLeft} days
+                    </span>
+                  </div>
+                )}
+                {ssl.error && (
+                  <div className="detail-health__row">
+                    <span className="detail-health__label">Note</span>
+                    <span className="muted">{ssl.error}</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 3. Support Tickets */}
       <div className="section">
         <h2 className="section__title">Support Tickets</h2>
         {hasTicketsError ? (

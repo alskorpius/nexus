@@ -40,10 +40,27 @@ npm run build
 npm run tauri build
 ```
 
+## MCP Server (Project Memory for AI tools)
+
+Nexus ships a local **Model Context Protocol server** that lets AI coding tools (Claude Code, Codex, Cursor) pull structured project context directly from your local Nexus database.
+
+```bash
+# Install
+cd mcp-server && npm install
+
+# Register with Claude Code
+claude mcp add nexus -- node C:\Projects\nexus\mcp-server\src\index.js
+```
+
+Available MCP tools: `list_projects`, `get_project`, `get_project_context` (markdown briefing for AI sessions), `search_projects`.
+
+See [docs/MCP-SERVER.md](docs/MCP-SERVER.md) for full setup, Claude Code config, tool reference, and security notes.
+
 ## Documentation
 
 - [PROJECT.md](PROJECT.md) — vision, scope, roadmap
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — technical architecture, DB schema, security model
+- [docs/MCP-SERVER.md](docs/MCP-SERVER.md) — MCP server for AI tool integration
 
 ## License
 

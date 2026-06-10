@@ -1,0 +1,22 @@
+{
+  "name": "@nexus/mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server exposing Nexus project memory to AI coding tools",
+  "type": "module",
+  "bin": {
+    "nexus-mcp": "./src/index.js"
+  },
+  "main": "./src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "make-test-db": "node scripts/make-test-db.js",
+    "smoke": "node scripts/smoke.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "better-sqlite3": "^12.10.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

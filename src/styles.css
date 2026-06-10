@@ -1246,3 +1246,248 @@ input, select, textarea { font-family: var(--font-sans); }
 .text-healthy  { color: var(--healthy); }
 .text-warning  { color: var(--warning); }
 .text-critical { color: var(--critical); }
+
+/* ── Theme: Graphite (neutral gray) ──────────────────────────────────── */
+[data-theme='graphite'] {
+  --bg-root:        #0e0e0e;
+  --bg-panel:       #141414;
+  --bg-card:        #1a1a1a;
+  --bg-card-hover:  #202020;
+  --bg-input:       #111111;
+  --bg-modal:       #161616;
+  --bg-overlay:     rgba(0, 0, 0, 0.78);
+  --bg-sidebar:     #0c0c0c;
+
+  --border:         rgba(255, 255, 255, 0.08);
+  --border-focus:   rgba(156, 163, 175, 0.55);
+  --border-input:   rgba(255, 255, 255, 0.11);
+
+  --text:           #d1d5db;
+  --text-muted:     #6b7280;
+  --text-subtle:    #4b5563;
+  --text-accent:    #9ca3af;
+
+  --accent:         #6b7280;
+  --accent-hover:   #9ca3af;
+  --accent-dim:     rgba(107, 114, 128, 0.14);
+}
+
+/* ── Theme: Emerald (green accent) ───────────────────────────────────── */
+[data-theme='emerald'] {
+  --bg-root:        #080f0c;
+  --bg-panel:       #0c1510;
+  --bg-card:        #101a14;
+  --bg-card-hover:  #141f18;
+  --bg-input:       #0a1009;
+  --bg-modal:       #0e1812;
+  --bg-overlay:     rgba(2, 8, 5, 0.78);
+  --bg-sidebar:     #070d09;
+
+  --border:         rgba(52, 211, 153, 0.08);
+  --border-focus:   rgba(52, 211, 153, 0.50);
+  --border-input:   rgba(52, 211, 153, 0.10);
+
+  --text:           #d1fae5;
+  --text-muted:     #6ee7b7;
+  --text-subtle:    #34d399;
+  --text-accent:    #6ee7b7;
+
+  --accent:         #34d399;
+  --accent-hover:   #6ee7b7;
+  --accent-dim:     rgba(52, 211, 153, 0.12);
+}
+
+/* ── Theme: Violet ────────────────────────────────────────────────────── */
+[data-theme='violet'] {
+  --bg-root:        #090810;
+  --bg-panel:       #0f0d1c;
+  --bg-card:        #141228;
+  --bg-card-hover:  #19162e;
+  --bg-input:       #0b0a16;
+  --bg-modal:       #111020;
+  --bg-overlay:     rgba(3, 2, 10, 0.80);
+  --bg-sidebar:     #070613;
+
+  --border:         rgba(167, 139, 250, 0.09);
+  --border-focus:   rgba(167, 139, 250, 0.50);
+  --border-input:   rgba(167, 139, 250, 0.12);
+
+  --text:           #ede9fe;
+  --text-muted:     #a78bfa;
+  --text-subtle:    #7c3aed;
+  --text-accent:    #c4b5fd;
+
+  --accent:         #a78bfa;
+  --accent-hover:   #c4b5fd;
+  --accent-dim:     rgba(167, 139, 250, 0.13);
+}
+
+/* ── Theme: Light ─────────────────────────────────────────────────────── */
+[data-theme='light'] {
+  --bg-root:        #f4f6fa;
+  --bg-panel:       #eef0f5;
+  --bg-card:        #ffffff;
+  --bg-card-hover:  #f8f9fc;
+  --bg-input:       #f0f2f7;
+  --bg-modal:       #ffffff;
+  --bg-overlay:     rgba(100, 110, 130, 0.40);
+  --bg-sidebar:     #e8ebf2;
+
+  --border:         rgba(0, 0, 0, 0.09);
+  --border-focus:   rgba(37, 99, 235, 0.50);
+  --border-input:   rgba(0, 0, 0, 0.13);
+
+  --text:           #111827;
+  --text-muted:     #4b5563;
+  --text-subtle:    #9ca3af;
+  --text-accent:    #2563eb;
+
+  --accent:         #2563eb;
+  --accent-hover:   #1d4ed8;
+  --accent-dim:     rgba(37, 99, 235, 0.10);
+
+  --healthy:        #16a34a;
+  --healthy-dim:    rgba(22, 163, 74, 0.10);
+  --warning:        #d97706;
+  --warning-dim:    rgba(217, 119, 6, 0.10);
+  --critical:       #dc2626;
+  --critical-dim:   rgba(220, 38, 38, 0.10);
+  --unknown:        #6b7280;
+  --unknown-dim:    rgba(107, 114, 128, 0.10);
+
+  --blue-badge-bg:    rgba(37, 99, 235, 0.10);
+  --blue-badge-text:  #1d4ed8;
+  --amber-badge-bg:   rgba(217, 119, 6, 0.10);
+  --amber-badge-text: #b45309;
+  --green-badge-bg:   rgba(22, 163, 74, 0.10);
+  --green-badge-text: #166534;
+  --red-badge-bg:     rgba(220, 38, 38, 0.10);
+  --red-badge-text:   #b91c1c;
+  --red-strong-bg:    rgba(220, 38, 38, 0.15);
+  --red-strong-text:  #991b1b;
+  --muted-badge-bg:   rgba(107, 114, 128, 0.10);
+  --muted-badge-text: #6b7280;
+}
+
+/* Light theme — ghost button hover needs readable contrast */
+[data-theme='light'] .btn--ghost:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+  color: var(--text);
+  border-color: rgba(0, 0, 0, 0.18);
+}
+
+/* Light theme — table row hover */
+[data-theme='light'] .table tbody tr:hover td {
+  background: rgba(0, 0, 0, 0.025);
+}
+
+/* Light theme — project row hover border */
+[data-theme='light'] .project-row:hover {
+  border-color: rgba(0, 0, 0, 0.14);
+}
+
+/* ── Sidebar branding — custom logo + name ────────────────────────────── */
+.sidebar__brand-logo {
+  display: block;
+  max-height: 28px;
+  max-width: 100%;
+  object-fit: contain;
+  margin-bottom: var(--space-2);
+  border-radius: 4px;
+}
+
+/* ── Theme picker swatches ────────────────────────────────────────────── */
+.theme-picker {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+.theme-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: border-color var(--transition);
+  min-width: 60px;
+}
+
+.theme-swatch:hover {
+  border-color: var(--accent);
+}
+
+.theme-swatch--active {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.theme-swatch__dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.15);
+}
+
+[data-theme='light'] .theme-swatch__dot {
+  border-color: rgba(0,0,0,0.12);
+}
+
+.theme-swatch__label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.theme-swatch--active .theme-swatch__label {
+  color: var(--accent-hover);
+}
+
+/* ── Logo upload area ─────────────────────────────────────────────────── */
+.logo-upload-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.logo-preview {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  flex-shrink: 0;
+}
+
+.logo-upload-placeholder {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border-input);
+  background: var(--bg-input);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--text-subtle);
+  flex-shrink: 0;
+}
+
+.logo-upload-input {
+  display: none;
+}
+
+.logo-upload-error {
+  font-size: 12px;
+  color: var(--critical);
+  margin-top: var(--space-1);
+}
