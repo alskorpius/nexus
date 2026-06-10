@@ -3,22 +3,24 @@ import { useStore } from '../state/store';
 import type { Nav } from '../state/store';
 import { subscribeBranding } from '../lib/theme';
 import type { BrandingState } from '../lib/theme';
+import { useI18n } from '../lib/i18n';
 
 interface NavItem {
   page: Nav['page'];
-  label: string;
+  labelKey: string;
   icon: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { page: 'dashboard', label: 'Dashboard', icon: '⬡' },
-  { page: 'projects', label: 'Projects', icon: '⊞' },
-  { page: 'ai', label: 'AI Usage', icon: '◎' },
-  { page: 'settings', label: 'Settings', icon: '⚙' },
+  { page: 'dashboard', labelKey: 'dashboard.nav.dashboard', icon: '⬡' },
+  { page: 'projects',  labelKey: 'dashboard.nav.projects',  icon: '⊞' },
+  { page: 'ai',        labelKey: 'dashboard.nav.ai',        icon: '◎' },
+  { page: 'settings',  labelKey: 'dashboard.nav.settings',  icon: '⚙' },
 ];
 
 export function Sidebar() {
   const { nav, setNav } = useStore();
+  const { t } = useI18n();
   const activePage = nav.page === 'project' ? 'projects' : nav.page;
 
   const [branding, setBranding] = useState<BrandingState>({
@@ -34,7 +36,7 @@ export function Sidebar() {
   }, []);
 
   const displayName = branding.workspaceName.trim() || 'NEXUS';
-  const displaySub  = branding.workspaceName.trim() ? '' : 'Project Control Center';
+  const displaySub  = branding.workspaceName.trim() ? '' : t('dashboard.nav.subBrand');
 
   return (
     <aside className="sidebar">
@@ -60,7 +62,7 @@ export function Sidebar() {
             onClick={() => setNav({ page: item.page })}
           >
             <span className="sidebar__nav-icon">{item.icon}</span>
-            <span className="sidebar__nav-label">{item.label}</span>
+            <span className="sidebar__nav-label">{t(item.labelKey)}</span>
           </button>
         ))}
       </nav>

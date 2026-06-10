@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useI18n } from '../lib/i18n';
 
 interface PassphraseModalProps {
   title: string;
@@ -8,6 +9,7 @@ interface PassphraseModalProps {
 }
 
 export function PassphraseModal({ title, mode, onConfirm, onCancel }: PassphraseModalProps) {
+  const { t } = useI18n();
   const [passphrase, setPassphrase] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
@@ -33,11 +35,11 @@ export function PassphraseModal({ title, mode, onConfirm, onCancel }: Passphrase
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!passphrase.trim()) {
-      setError('Passphrase is required.');
+      setError(t('projects.passphrase.errorRequired'));
       return;
     }
     if (mode === 'export' && passphrase !== confirm) {
-      setError('Passphrases do not match.');
+      setError(t('projects.passphrase.errorMismatch'));
       return;
     }
     onConfirm(passphrase);
@@ -60,13 +62,13 @@ export function PassphraseModal({ title, mode, onConfirm, onCancel }: Passphrase
         <form className="modal__body" onSubmit={handleSubmit}>
           <p className="modal__hint">
             {mode === 'export'
-              ? 'This passphrase encrypts the bundle file (AES-256-GCM + Argon2id). Store it safely — there is no recovery.'
-              : 'Enter the passphrase used when the bundle was exported.'}
+              ? t('projects.passphrase.exportHint')
+              : t('projects.passphrase.importHint')}
           </p>
 
           <div className="form-field">
             <label className="form-label" htmlFor="passphrase-input">
-              Passphrase
+              {t('projects.passphrase.label')}
             </label>
             <input
               ref={inputRef}
@@ -76,14 +78,14 @@ export function PassphraseModal({ title, mode, onConfirm, onCancel }: Passphrase
               value={passphrase}
               onChange={e => { setPassphrase(e.target.value); setError(''); }}
               autoComplete="new-password"
-              placeholder="Enter passphrase"
+              placeholder={t('projects.passphrase.placeholder')}
             />
           </div>
 
           {mode === 'export' && (
             <div className="form-field">
               <label className="form-label" htmlFor="passphrase-confirm">
-                Confirm passphrase
+                {t('projects.passphrase.confirmLabel')}
               </label>
               <input
                 id="passphrase-confirm"
@@ -92,7 +94,7 @@ export function PassphraseModal({ title, mode, onConfirm, onCancel }: Passphrase
                 value={confirm}
                 onChange={e => { setConfirm(e.target.value); setError(''); }}
                 autoComplete="new-password"
-                placeholder="Repeat passphrase"
+                placeholder={t('projects.passphrase.confirmPlaceholder')}
               />
             </div>
           )}
@@ -101,10 +103,10 @@ export function PassphraseModal({ title, mode, onConfirm, onCancel }: Passphrase
 
           <div className="modal__actions">
             <button type="button" className="btn btn--ghost" onClick={onCancel}>
-              Cancel
+              {t('common.cancel')}
             </button>
             <button type="submit" className="btn btn--primary">
-              {mode === 'export' ? 'Export' : 'Import'}
+              {mode === 'export' ? t('projects.passphrase.exportBtn') : t('projects.passphrase.importBtn')}
             </button>
           </div>
         </form>

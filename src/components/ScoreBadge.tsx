@@ -1,4 +1,5 @@
-import { scoreColor, scoreLabel } from '../lib/score';
+import { useI18n } from '../lib/i18n';
+import { scoreColor, scoreLabelKey } from '../lib/score';
 
 interface ScoreBadgeProps {
   score: number;
@@ -6,8 +7,9 @@ interface ScoreBadgeProps {
 }
 
 export function ScoreBadge({ score, size = 'md' }: ScoreBadgeProps) {
+  const { t } = useI18n();
   const cssVar = scoreColor(score);
-  const label = scoreLabel(score);
+  const label = t(scoreLabelKey(score));
   const color = `var(${cssVar})`;
   const dimColor = `var(${cssVar}-dim)`;
 

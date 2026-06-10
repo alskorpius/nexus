@@ -4,6 +4,7 @@ import { listAiAccounts, saveAiAccount, deleteAiAccount, getSetting, setSetting 
 import { getSecret, setSecret, deleteSecret, secretKeys } from '../lib/secrets';
 import { fetchAiUsage } from '../adapters/ai';
 import type { AiUsageSummary } from '../adapters/ai';
+import { t, useI18n } from '../lib/i18n';
 
 // ---------------------------------------------------------------------------
 // Period type
@@ -103,6 +104,7 @@ function earliestDay(days: AiUsageSummary['days']): string | null {
 // ---------------------------------------------------------------------------
 
 function DailyBarChart({ days }: { days: AiUsageSummary['days'] }) {
+  useI18n(); // subscribe so tooltips re-translate on language switch
   if (days.length === 0) return null;
   const maxTokens = Math.max(
     ...days.map((d) => d.inputTokens + d.cacheReadTokens + d.cacheCreationTokens + d.outputTokens),
@@ -118,7 +120,14 @@ function DailyBarChart({ days }: { days: AiUsageSummary['days'] }) {
         return (
           <div
             key={d.date}
-            title={`${d.date}: ${fmtTokens(total)} tokens (in: ${fmtTokens(d.inputTokens)}, cache-read: ${fmtTokens(d.cacheReadTokens)}, cache-write: ${fmtTokens(d.cacheCreationTokens)}, out: ${fmtTokens(d.outputTokens)})`}
+            title={t('ai.chart.barTooltip', {
+              date: d.date,
+              total: fmtTokens(total),
+              input: fmtTokens(d.inputTokens),
+              cacheRead: fmtTokens(d.cacheReadTokens),
+              cacheWrite: fmtTokens(d.cacheCreationTokens),
+              output: fmtTokens(d.outputTokens),
+            })}
             style={{
               flex: 1,
               height: `${Math.max(pct, 2)}%`,
@@ -145,6 +154,7 @@ interface BudgetBarProps {
 }
 
 function BudgetBar({ spent, budget }: BudgetBarProps) {
+  useI18n(); // subscribe so labels re-translate on language switch
   const pct = Math.min((spent / budget) * 100, 100);
   const remaining = budget - spent;
   const isNearlyOut = pct >= 90;
@@ -157,11 +167,11 @@ function BudgetBar({ spent, budget }: BudgetBarProps) {
   return (
     <div style={{ marginTop: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
-        <span>Monthly budget</span>
+        <span>{t('ai.budget.monthlyBudget')}</span>
         <span style={{ color: remainingColor, fontWeight: remaining <= 0 ? 700 : 400 }}>
           {remaining <= 0
-            ? `Over budget by ${fmtCost(Math.abs(remaining))}`
-            : `${fmtCost(remaining)} remaining`}
+            ? t('ai.budget.overBudget', { amount: fmtCost(Math.abs(remaining)) })
+            : t('ai.budget.remaining', { amount: fmtCost(remaining) })}
         </span>
       </div>
       {/* Track */}
@@ -177,8 +187,8 @@ function BudgetBar({ spent, budget }: BudgetBarProps) {
         />
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
-        <span>Spent: {fmtCost(spent)}</span>
-        <span>Budget: {fmtCost(budget)}</span>
+        <span>{t('ai.budget.spent', { amount: fmtCost(spent) })}</span>
+        <span>{t('ai.budget.budgetLabel', { amount: fmtCost(budget) })}</span>
       </div>
     </div>
   );
@@ -194,6 +204,7 @@ interface PeriodSwitcherProps {
 }
 
 function PeriodSwitcher({ value, onChange }: PeriodSwitcherProps) {
+  useI18n(); // subscribe so period labels re-translate on language switch
   return (
     <div style={{ display: 'flex', gap: 2 }}>
       {PERIOD_LABELS.map((p) => (
@@ -213,7 +224,7 @@ function PeriodSwitcher({ value, onChange }: PeriodSwitcherProps) {
             transition: 'background 0.15s, color 0.15s',
           }}
         >
-          {p}
+          {t(`ai.period.${p}`)}
         </button>
       ))}
     </div>
@@ -273,6 +284,7 @@ function AccountCard({
   account, summary, loading, period, budget, balance,
   onRefresh, onDelete, onPeriodChange, onBudgetSave, onBalanceSave,
 }: AccountCardProps) {
+  useI18n(); // subscribe to language changes so card re-renders on lang switch
   const today = summary?.days.find((d) => d.date === todayStr());
   const todayTotal = today
     ? today.inputTokens + today.cacheReadTokens + today.cacheCreationTokens + today.outputTokens
@@ -363,8 +375,8 @@ function AccountCard({
       ? '#f59e0b'
       : 'inherit';
 
-  // Period label for display
-  const periodLabel = period === '24h' ? '24h' : period;
+  // Period label for display (translated compact label)
+  const periodLabel = t(`ai.period.${period}`);
 
   // Determine whether the fetched window covers the whole current month
   // (for budget) or back to the balance snapshot date (for balance).
@@ -376,7 +388,9 @@ function AccountCard({
 
   // Chart caption
   const chartCaption =
-    period === '24h' ? 'Daily token usage (today)' : `Daily token usage (last ${period})`;
+    period === '24h'
+      ? t('ai.chart.captionToday')
+      : t('ai.chart.captionPeriod', { period: periodLabel });
 
   return (
     <div className="card" style={{ marginBottom: 12 }}>
@@ -394,14 +408,14 @@ function AccountCard({
             onClick={() => onRefresh(account.id)}
             style={{ fontSize: 12, padding: '4px 10px' }}
           >
-            {loading ? 'Loading…' : 'Refresh'}
+            {loading ? t('ai.card.loading') : t('common.refresh')}
           </button>
           <button
             className="btn"
             onClick={() => onDelete(account.id)}
             style={{ fontSize: 12, padding: '4px 10px', color: 'var(--error, #ef4444)' }}
           >
-            Delete
+            {t('common.delete')}
           </button>
         </div>
       </div>
@@ -426,20 +440,20 @@ function AccountCard({
           >
             <div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>
-                Input tokens (uncached, {periodLabel})
+                {t('ai.stats.inputTokens', { period: periodLabel })}
               </div>
               <div style={{ fontWeight: 700, fontSize: 18 }}>{fmtTokens(summary.totalInput)}</div>
             </div>
             <div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>
-                Output tokens ({periodLabel})
+                {t('ai.stats.outputTokens', { period: periodLabel })}
               </div>
               <div style={{ fontWeight: 700, fontSize: 18 }}>{fmtTokens(summary.totalOutput)}</div>
             </div>
             {summary.totalCacheRead > 0 && (
               <div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>
-                  Cache read tokens ({periodLabel})
+                  {t('ai.stats.cacheReadTokens', { period: periodLabel })}
                 </div>
                 <div style={{ fontWeight: 700, fontSize: 18 }}>
                   {fmtTokens(summary.totalCacheRead)}
@@ -449,7 +463,7 @@ function AccountCard({
             {summary.totalCacheCreation > 0 && (
               <div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>
-                  Cache write tokens ({periodLabel})
+                  {t('ai.stats.cacheWriteTokens', { period: periodLabel })}
                 </div>
                 <div style={{ fontWeight: 700, fontSize: 18 }}>
                   {fmtTokens(summary.totalCacheCreation)}
@@ -459,7 +473,7 @@ function AccountCard({
             {summary.totalCostUsd !== null && (
               <div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>
-                  Cost ({periodLabel})
+                  {t('ai.stats.cost', { period: periodLabel })}
                 </div>
                 <div style={{ fontWeight: 700, fontSize: 18 }}>
                   {fmtCost(summary.totalCostUsd)}
@@ -469,7 +483,7 @@ function AccountCard({
             {todayTotal !== null && (
               <div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>
-                  Today's tokens
+                  {t('ai.stats.todayTokens')}
                 </div>
                 <div style={{ fontWeight: 700, fontSize: 18 }}>{fmtTokens(todayTotal)}</div>
               </div>
@@ -479,7 +493,7 @@ function AccountCard({
           {/* Cost endpoint error — shown below stats, not as a full-card error */}
           {summary.costError && (
             <p style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>
-              Cost unavailable: {summary.costError}
+              {t('ai.stats.costUnavailable')}{summary.costError}
             </p>
           )}
 
@@ -489,12 +503,12 @@ function AccountCard({
           )}
           {budget != null && costKnown && windowTooShortForBudget && (
             <p style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)' }}>
-              Switch to a longer period to compute this
+              {t('ai.budget.switchPeriod')}
             </p>
           )}
           {budget != null && !costKnown && (
             <p style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)' }}>
-              Budget set, but cost data unavailable.
+              {t('ai.budget.costUnavailable')}
             </p>
           )}
 
@@ -502,24 +516,28 @@ function AccountCard({
           {balance !== null && estimatedBalance !== null && !windowTooShortForBalance && (
             <div style={{ marginTop: 14 }}>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>
-                Estimated credit balance
+                {t('ai.balance.estimatedLabel')}
               </div>
               <div style={{ fontWeight: 700, fontSize: 18, color: balanceColor }}>
                 {estimatedBalance < 0 ? `-${fmtCost(Math.abs(estimatedBalance))}` : fmtCost(estimatedBalance)}
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                as of {balance.date} snapshot ({fmtCost(balance.usd)}) minus {fmtCost(spentSinceSnapshot ?? 0)} spent since
+                {t('ai.balance.snapshotNote', {
+                  date: balance.date,
+                  snapshotAmount: fmtCost(balance.usd),
+                  spentAmount: fmtCost(spentSinceSnapshot ?? 0),
+                })}
               </div>
             </div>
           )}
           {balance !== null && costKnown && windowTooShortForBalance && (
             <p style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)' }}>
-              Switch to a longer period to compute this
+              {t('ai.budget.switchPeriod')}
             </p>
           )}
           {balance !== null && !costKnown && (
             <p style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)' }}>
-              Balance set, but cost data unavailable.
+              {t('ai.balance.costUnavailable')}
             </p>
           )}
 
@@ -537,20 +555,20 @@ function AccountCard({
 
       {!summary && !loading && (
         <p style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)' }}>
-          No admin key stored. Add one below or save the account again with a key.
+          {t('ai.card.noKey')}
         </p>
       )}
 
       {/* Monthly budget editor */}
       <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border, #3a3a4a)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>Monthly budget (USD):</span>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>{t('ai.budgetEditor.label')}</span>
         <input
           type="number"
           min={0}
           step={0.01}
           className="form-input"
           style={{ width: 90, fontSize: 12, padding: '3px 6px' }}
-          placeholder="none"
+          placeholder={t('ai.budgetEditor.placeholder')}
           value={budgetInput}
           onChange={(e) => { setBudgetInput(e.target.value); setBudgetEditing(true); }}
           onBlur={() => { if (!budgetEditing) return; }}
@@ -561,7 +579,7 @@ function AccountCard({
           disabled={budgetSaving}
           onClick={handleBudgetSave}
         >
-          {budgetSaving ? '…' : 'Save'}
+          {budgetSaving ? '…' : t('common.save')}
         </button>
         {budget != null && (
           <button
@@ -569,21 +587,21 @@ function AccountCard({
             style={{ fontSize: 12, padding: '3px 8px', color: 'var(--text-muted)' }}
             onClick={() => { setBudgetInput(''); setBudgetEditing(true); void (async () => { setBudgetSaving(true); await onBudgetSave(account.id, null); setBudgetSaving(false); setBudgetEditing(false); })(); }}
           >
-            Clear
+            {t('ai.budgetEditor.clear')}
           </button>
         )}
       </div>
 
       {/* Credit balance snapshot editor */}
       <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>Credit balance (USD):</span>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>{t('ai.balanceEditor.label')}</span>
         <input
           type="number"
           min={0}
           step={0.01}
           className="form-input"
           style={{ width: 90, fontSize: 12, padding: '3px 6px' }}
-          placeholder="none"
+          placeholder={t('ai.balanceEditor.placeholder')}
           value={balanceInput}
           onChange={(e) => { setBalanceInput(e.target.value); setBalanceEditing(true); }}
         />
@@ -593,7 +611,7 @@ function AccountCard({
           disabled={balanceSaving}
           onClick={handleBalanceSave}
         >
-          {balanceSaving ? '…' : 'Save'}
+          {balanceSaving ? '…' : t('common.save')}
         </button>
         {balance != null && (
           <button
@@ -601,11 +619,11 @@ function AccountCard({
             style={{ fontSize: 12, padding: '3px 8px', color: 'var(--text-muted)' }}
             onClick={() => { setBalanceInput(''); setBalanceEditing(true); void (async () => { setBalanceSaving(true); await onBalanceSave(account.id, null); setBalanceSaving(false); setBalanceEditing(false); })(); }}
           >
-            Clear
+            {t('ai.balanceEditor.clear')}
           </button>
         )}
         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-          Enter your current credit balance from the provider console — Nexus will subtract API costs from this point.
+          {t('ai.balanceEditor.hint')}
         </span>
       </div>
     </div>
@@ -617,6 +635,7 @@ function AccountCard({
 // ---------------------------------------------------------------------------
 
 export function AiUsage() {
+  useI18n(); // subscribe to language changes so page re-renders on lang switch
   const [accounts, setAccounts] = useState<AiAccount[]>([]);
   const [summaries, setSummaries] = useState<Map<number, AiUsageSummary>>(new Map());
   const [loading, setLoading] = useState<Set<number>>(new Set());
@@ -775,7 +794,7 @@ export function AiUsage() {
             totalCacheCreation: 0,
             totalCostUsd: null,
             costError: null,
-            error: 'No admin key stored for this account.',
+            error: t('ai.card.noKeyError'),
           }),
         );
       }
@@ -907,11 +926,11 @@ export function AiUsage() {
     e.preventDefault();
     setFormError('');
     if (!formName.trim()) {
-      setFormError('Name is required.');
+      setFormError(t('ai.addForm.errorNameRequired'));
       return;
     }
     if (!formKey.trim()) {
-      setFormError('Admin API key is required.');
+      setFormError(t('ai.addForm.errorKeyRequired'));
       return;
     }
     setFormSaving(true);
@@ -934,10 +953,8 @@ export function AiUsage() {
     }
   }
 
-  const anthropicKeyHint =
-    'Anthropic: use an sk-ant-admin… key from Claude Console → Org Settings → API Keys.';
-  const openaiKeyHint =
-    'OpenAI: use an admin key from platform.openai.com → Organization Settings → API Keys.';
+  const anthropicKeyHint = t('ai.addForm.keyHintAnthropic');
+  const openaiKeyHint = t('ai.addForm.keyHintOpenAI');
 
   // ---------------------------------------------------------------------------
   // Render
@@ -946,11 +963,11 @@ export function AiUsage() {
   return (
     <div className="page">
       <div className="page__header">
-        <h1 className="page__title">AI Usage</h1>
+        <h1 className="page__title">{t('ai.page.title')}</h1>
         {accounts.length > 0 && (
           <div className="page__actions">
             <button className="btn btn--primary" onClick={handleRefreshAll}>
-              Refresh all
+              {t('ai.page.refreshAll')}
             </button>
           </div>
         )}
@@ -980,17 +997,17 @@ export function AiUsage() {
 
       {/* Add account card */}
       <div className="card settings-card">
-        <h2 className="settings-card__title">Add AI account</h2>
+        <h2 className="settings-card__title">{t('ai.addForm.title')}</h2>
         <form onSubmit={handleAdd}>
           <div className="form-field">
             <label className="form-label" htmlFor="ai-name">
-              Account name
+              {t('ai.addForm.nameLabel')}
             </label>
             <input
               id="ai-name"
               type="text"
               className="form-input"
-              placeholder="e.g. My Anthropic Org"
+              placeholder={t('ai.addForm.namePlaceholder')}
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
             />
@@ -998,7 +1015,7 @@ export function AiUsage() {
 
           <div className="form-field">
             <label className="form-label" htmlFor="ai-provider">
-              Provider
+              {t('ai.addForm.providerLabel')}
             </label>
             <select
               id="ai-provider"
@@ -1013,7 +1030,7 @@ export function AiUsage() {
 
           <div className="form-field">
             <label className="form-label" htmlFor="ai-key">
-              Admin API key
+              {t('ai.addForm.keyLabel')}
             </label>
             <input
               id="ai-key"
@@ -1026,14 +1043,14 @@ export function AiUsage() {
             />
             <p className="form-hint form-hint--block" style={{ marginTop: 4 }}>
               {formProvider === 'anthropic' ? anthropicKeyHint : openaiKeyHint}
-              {' '}Keys are stored in the OS keyring and never written to disk.
+              {' '}{t('ai.addForm.keyStorageNote')}
             </p>
           </div>
 
           {formError && <p className="form-error">{formError}</p>}
 
           <button type="submit" className="btn btn--primary" disabled={formSaving}>
-            {formSaving ? 'Saving…' : 'Add account'}
+            {formSaving ? t('ai.addForm.submitSaving') : t('ai.addForm.submit')}
           </button>
         </form>
       </div>
@@ -1041,10 +1058,9 @@ export function AiUsage() {
       {accounts.length === 0 && (
         <div className="empty-state" style={{ marginTop: 24 }}>
           <div className="empty-state__icon">⚡</div>
-          <h2 className="empty-state__title">No AI accounts yet</h2>
+          <h2 className="empty-state__title">{t('ai.empty.title')}</h2>
           <p className="empty-state__body">
-            Add an Anthropic or OpenAI admin account above to see token and cost usage across your
-            organization.
+            {t('ai.empty.body')}
           </p>
         </div>
       )}

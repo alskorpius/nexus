@@ -7,13 +7,16 @@ import { ProjectDetail } from './pages/ProjectDetail';
 import { Settings } from './pages/Settings';
 import { AiUsage } from './pages/AiUsage';
 import { loadBranding } from './lib/theme';
+import { loadLanguage, useI18n } from './lib/i18n';
 
 function AppContent() {
   const { nav, loading } = useStore();
+  const { t } = useI18n();
 
   useEffect(() => {
-    // Load persisted theme + branding on mount; fire-and-forget.
+    // Load persisted theme + branding + language on mount; fire-and-forget.
     loadBranding().catch(err => console.warn('Failed to load branding:', err));
+    loadLanguage().catch(err => console.warn('Failed to load language:', err));
   }, []);
 
   if (loading) {
@@ -30,7 +33,7 @@ function AppContent() {
           fontSize: '13px',
           letterSpacing: '0.05em',
         }}>
-          Loading…
+          {t('common.loading')}
         </div>
       </div>
     );

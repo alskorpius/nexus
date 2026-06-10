@@ -108,3 +108,17 @@ export function scoreLabel(score: number): string {
   if (score >= 40) return 'Fair';
   return 'Poor';
 }
+
+/**
+ * Map a health score to an i18n key (common namespace).
+ *   ≥ 90 → 'common.score.excellent'
+ *   ≥ 70 → 'common.score.good'
+ *   ≥ 40 → 'common.score.fair'
+ *   < 40 → 'common.score.poor'
+ */
+export function scoreLabelKey(score: number): string {
+  if (score >= 90) return 'common.score.excellent';
+  if (score >= 70) return 'common.score.good';
+  if (score >= 40) return 'common.score.fair';
+  return 'common.score.poor';
+}

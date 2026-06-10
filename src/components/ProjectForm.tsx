@@ -2,25 +2,27 @@ import { useState, useEffect } from 'react';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import type { Project, ProjectDraft, AuthMethod, GitProvider } from '../types';
 import { useStore } from '../state/store';
+import { useI18n } from '../lib/i18n';
 
-// Token-creation guidance per git provider; the GitLab link is derived from Repo URL
-function gitTokenHelp(
+// Token-creation guidance per git provider; the GitLab link is derived from Repo URL.
+// Returns raw data only — translation happens at the call site inside the component.
+function gitTokenHelpData(
   provider: GitProvider,
   repoUrl: string,
-): { text: string; url: string | null; linkLabel: string } | null {
+): { textKey: 'form.gitlabTokenHint' | 'form.githubTokenHint'; url: string | null; linkLabelKey: 'form.gitlabTokenLinkLabel' | 'form.githubTokenLinkLabel' } | null {
   if (provider === 'gitlab') {
     const repo = repoUrl.trim().replace(/\.git$/, '').replace(/\/+$/, '');
     return {
-      text: 'Project Access Token — role: Reporter, scopes: read_api.',
+      textKey: 'form.gitlabTokenHint',
       url: repo.startsWith('http') ? `${repo}/-/settings/access_tokens` : null,
-      linkLabel: 'Open project access tokens ↗',
+      linkLabelKey: 'form.gitlabTokenLinkLabel',
     };
   }
   if (provider === 'github') {
     return {
-      text: 'Fine-grained personal access token — read-only: Contents, Pull requests, Actions.',
+      textKey: 'form.githubTokenHint',
       url: 'https://github.com/settings/personal-access-tokens/new',
-      linkLabel: 'Create token on GitHub ↗',
+      linkLabelKey: 'form.githubTokenLinkLabel',
     };
   }
   return null;
@@ -49,6 +51,7 @@ const EMPTY_DRAFT: ProjectDraft = {
 };
 
 export function ProjectForm({ project, onClose }: ProjectFormProps) {
+  const { t } = useI18n();
   const { saveProjectWithSecrets } = useStore();
   const isEdit = Boolean(project);
 
@@ -99,7 +102,7 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
 
   function validate(): boolean {
     const errs: Record<string, string> = {};
-    if (!draft.name.trim()) errs.name = 'Name is required.';
+    if (!draft.name.trim()) errs.name = t('projects.form.errorNameRequired');
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -117,7 +120,7 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
           try {
             JSON.parse(text);
           } catch {
-            setErrors({ loginCreds: 'Credentials look like JSON but do not parse — fix the syntax.' });
+            setErrors({ loginCreds: t('projects.form.errorInvalidJson') });
             setSaving(false);
             return;
           }
@@ -143,25 +146,29 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
   const showLoginCredentials = draft.authMethod === 'login';
   const hasSecrets = showBearerToken || showLoginCredentials || showGitToken;
 
-  const secretPlaceholder = isEdit ? '•••• stored — leave empty to keep' : '';
+  const secretPlaceholder = isEdit ? t('projects.form.secretStoredPlaceholder') : '';
 
   return (
     // No click-outside close: the form is large and accidental clicks would lose input
     <div className="modal-overlay">
       <div className="modal modal--large">
         <div className="modal__header">
-          <h2 className="modal__title">{isEdit ? `Edit ${project!.name}` : 'Add Project'}</h2>
-          <button className="modal__close" onClick={onClose} aria-label="Close">✕</button>
+          <h2 className="modal__title">
+            {isEdit
+              ? t('projects.form.editTitle', { name: project!.name })
+              : t('projects.form.addTitle')}
+          </h2>
+          <button className="modal__close" onClick={onClose} aria-label={t('projects.form.closeAriaLabel')}>✕</button>
         </div>
 
         <form className="modal__body modal__body--scroll" onSubmit={handleSubmit}>
           {/* Core */}
           <fieldset className="form-section">
-            <legend className="form-section__legend">General</legend>
+            <legend className="form-section__legend">{t('projects.form.section.general')}</legend>
 
             <div className="form-field">
               <label className="form-label" htmlFor="pf-name">
-                Name <span className="form-required">*</span>
+                {t('projects.form.name')} <span className="form-required">*</span>
               </label>
               <input
                 id="pf-name"
@@ -169,25 +176,25 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
                 className={`form-input${errors.name ? ' form-input--error' : ''}`}
                 value={draft.name}
                 onChange={e => set('name', e.target.value)}
-                placeholder="My Project"
+                placeholder={t('projects.form.namePlaceholder')}
               />
               {errors.name && <p className="form-error">{errors.name}</p>}
             </div>
 
             <div className="form-field">
-              <label className="form-label" htmlFor="pf-desc">Description</label>
+              <label className="form-label" htmlFor="pf-desc">{t('projects.form.description')}</label>
               <input
                 id="pf-desc"
                 type="text"
                 className="form-input"
                 value={draft.description}
                 onChange={e => set('description', e.target.value)}
-                placeholder="Short description"
+                placeholder={t('projects.form.descriptionPlaceholder')}
               />
             </div>
 
             <div className="form-field">
-              <label className="form-label" htmlFor="pf-api">API Base URL</label>
+              <label className="form-label" htmlFor="pf-api">{t('projects.form.apiBaseUrl')}</label>
               <input
                 id="pf-api"
                 type="text"
@@ -200,28 +207,28 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
 
             <div className="form-row">
               <div className="form-field">
-                <label className="form-label" htmlFor="pf-auth">Auth Method</label>
+                <label className="form-label" htmlFor="pf-auth">{t('projects.form.authMethod')}</label>
                 <select
                   id="pf-auth"
                   className="form-select"
                   value={draft.authMethod}
                   onChange={e => set('authMethod', e.target.value as AuthMethod)}
                 >
-                  <option value="none">None</option>
-                  <option value="bearer">Bearer token (static)</option>
-                  <option value="login">Login endpoint (auto-refreshed token)</option>
+                  <option value="none">{t('projects.form.authNone')}</option>
+                  <option value="bearer">{t('projects.form.authBearer')}</option>
+                  <option value="login">{t('projects.form.authLogin')}</option>
                 </select>
               </div>
 
               <div className="form-field">
-                <label className="form-label" htmlFor="pf-git">Git Provider</label>
+                <label className="form-label" htmlFor="pf-git">{t('projects.form.gitProvider')}</label>
                 <select
                   id="pf-git"
                   className="form-select"
                   value={draft.gitProvider}
                   onChange={e => set('gitProvider', e.target.value as GitProvider)}
                 >
-                  <option value="none">None</option>
+                  <option value="none">{t('projects.form.gitNone')}</option>
                   <option value="github">GitHub</option>
                   <option value="gitlab">GitLab</option>
                 </select>
@@ -231,7 +238,7 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
             {showLoginCredentials && (
               <>
                 <div className="form-field">
-                  <label className="form-label" htmlFor="pf-login-url">Login Endpoint</label>
+                  <label className="form-label" htmlFor="pf-login-url">{t('projects.form.loginEndpoint')}</label>
                   <input
                     id="pf-login-url"
                     type="text"
@@ -243,8 +250,8 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
                 </div>
                 <div className="form-field">
                   <label className="form-label" htmlFor="pf-token-field">
-                    Token Field
-                    <span className="form-hint"> path to token in login response · empty = auto (access_token, token, data.access_token…)</span>
+                    {t('projects.form.tokenField')}
+                    <span className="form-hint">{t('projects.form.tokenFieldHint')}</span>
                   </label>
                   <input
                     id="pf-token-field"
@@ -261,10 +268,10 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
 
           {/* Endpoints */}
           <fieldset className="form-section">
-            <legend className="form-section__legend">Endpoints</legend>
+            <legend className="form-section__legend">{t('projects.form.section.endpoints')}</legend>
 
             <div className="form-field">
-              <label className="form-label" htmlFor="pf-health">Health Endpoint</label>
+              <label className="form-label" htmlFor="pf-health">{t('projects.form.healthEndpoint')}</label>
               <input
                 id="pf-health"
                 type="text"
@@ -277,8 +284,8 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
 
             <div className="form-field">
               <label className="form-label" htmlFor="pf-support">
-                Support Endpoint
-                <span className="form-hint"> empty → {draft.apiBaseUrl || '{apiBaseUrl}'}/v1/support-requests/</span>
+                {t('projects.form.supportEndpoint')}
+                <span className="form-hint">{t('projects.form.supportEndpointHint', { url: draft.apiBaseUrl || '{apiBaseUrl}' })}</span>
               </label>
               <input
                 id="pf-support"
@@ -286,12 +293,12 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
                 className="form-input"
                 value={draft.supportEndpoint}
                 onChange={e => set('supportEndpoint', e.target.value)}
-                placeholder="Leave empty to derive from API base"
+                placeholder={t('projects.form.supportEndpointPlaceholder')}
               />
             </div>
 
             <div className="form-field">
-              <label className="form-label" htmlFor="pf-deploy">Deploy Endpoint</label>
+              <label className="form-label" htmlFor="pf-deploy">{t('projects.form.deployEndpoint')}</label>
               <input
                 id="pf-deploy"
                 type="text"
@@ -305,10 +312,10 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
 
           {/* Git */}
           <fieldset className="form-section">
-            <legend className="form-section__legend">Repository</legend>
+            <legend className="form-section__legend">{t('projects.form.section.repository')}</legend>
 
             <div className="form-field">
-              <label className="form-label" htmlFor="pf-repo">Repo URL</label>
+              <label className="form-label" htmlFor="pf-repo">{t('projects.form.repoUrl')}</label>
               <input
                 id="pf-repo"
                 type="text"
@@ -321,8 +328,8 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
 
             <div className="form-field">
               <label className="form-label" htmlFor="pf-gitid">
-                Git Project ID
-                <span className="form-hint"> owner/repo for GitHub · project ID or full path for GitLab</span>
+                {t('projects.form.gitProjectId')}
+                <span className="form-hint">{t('projects.form.gitProjectIdHint')}</span>
               </label>
               <input
                 id="pf-gitid"
@@ -337,9 +344,9 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
 
           {/* Links */}
           <fieldset className="form-section">
-            <legend className="form-section__legend">Links</legend>
+            <legend className="form-section__legend">{t('projects.form.section.links')}</legend>
             <div className="form-field">
-              <label className="form-label" htmlFor="pf-docs">Docs URL</label>
+              <label className="form-label" htmlFor="pf-docs">{t('projects.form.docsUrl')}</label>
               <input
                 id="pf-docs"
                 type="text"
@@ -353,13 +360,13 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
 
           {/* Notes */}
           <fieldset className="form-section">
-            <legend className="form-section__legend">Notes</legend>
+            <legend className="form-section__legend">{t('projects.form.section.notes')}</legend>
             <div className="form-field">
               <textarea
                 className="form-input form-textarea"
                 value={draft.notes}
                 onChange={e => set('notes', e.target.value)}
-                placeholder="Free-form notes"
+                placeholder={t('projects.form.notesPlaceholder')}
                 rows={3}
               />
             </div>
@@ -369,13 +376,13 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
           {hasSecrets && (
             <fieldset className="form-section form-section--secrets">
               <legend className="form-section__legend">
-                Secrets
-                <span className="form-hint"> — stored in OS credential store, never in DB</span>
+                {t('projects.form.section.secrets')}
+                <span className="form-hint">{t('projects.form.section.secretsHint')}</span>
               </legend>
 
               {showBearerToken && (
                 <div className="form-field">
-                  <label className="form-label" htmlFor="pf-api-token">API Token</label>
+                  <label className="form-label" htmlFor="pf-api-token">{t('projects.form.apiToken')}</label>
                   <input
                     id="pf-api-token"
                     type="password"
@@ -391,10 +398,10 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
               {showLoginCredentials && (
                 <div className="form-field">
                   <label className="form-label" htmlFor="pf-login-creds">
-                    Login Credentials (request body)
+                    {t('projects.form.loginCreds')}
                     <span className="form-hint">
-                      {' '}any fields your API expects — JSON or form-encoded (a=1&b=2).
-                      {isEdit ? ' Leave empty to keep stored credentials.' : ''}
+                      {t('projects.form.loginCredsHint')}
+                      {isEdit ? t('projects.form.loginCredsHintEdit') : ''}
                     </span>
                   </label>
                   <textarea
@@ -414,7 +421,7 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
               {showGitToken && (
                 <div className="form-field">
                   <label className="form-label" htmlFor="pf-git-token">
-                    {draft.gitProvider === 'github' ? 'GitHub' : 'GitLab'} Token
+                    {draft.gitProvider === 'github' ? t('projects.form.gitHubToken') : t('projects.form.gitLabToken')}
                   </label>
                   <input
                     id="pf-git-token"
@@ -426,11 +433,11 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
                     placeholder={secretPlaceholder}
                   />
                   {(() => {
-                    const help = gitTokenHelp(draft.gitProvider, draft.repoUrl);
+                    const help = gitTokenHelpData(draft.gitProvider, draft.repoUrl);
                     if (!help) return null;
                     return (
                       <p className="form-hint form-hint--block">
-                        {help.text}
+                        {t(`projects.${help.textKey}`)}
                         {help.url ? (
                           <>
                             {' '}
@@ -439,12 +446,12 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
                               className="form-hint__link"
                               onClick={() => openUrl(help.url!)}
                             >
-                              {help.linkLabel}
+                              {t(`projects.${help.linkLabelKey}`)}
                             </button>
                           </>
                         ) : (
                           draft.gitProvider === 'gitlab' && (
-                            <> Fill in Repo URL to get a direct link (Settings → Access Tokens).</>
+                            <>{t('projects.form.gitlabNoUrlHint')}</>
                           )
                         )}
                       </p>
@@ -459,10 +466,14 @@ export function ProjectForm({ project, onClose }: ProjectFormProps) {
 
           <div className="modal__actions">
             <button type="button" className="btn btn--ghost" onClick={onClose}>
-              Cancel
+              {t('common.cancel')}
             </button>
             <button type="submit" className="btn btn--primary" disabled={saving}>
-              {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Add project'}
+              {saving
+                ? t('projects.form.savingBtn')
+                : isEdit
+                  ? t('projects.form.saveChangesBtn')
+                  : t('projects.form.addProjectBtn')}
             </button>
           </div>
         </form>

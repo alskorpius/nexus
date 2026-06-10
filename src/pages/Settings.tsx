@@ -8,10 +8,12 @@ import {
   saveTheme,
 } from '../lib/theme';
 import type { BrandingState, ThemeId } from '../lib/theme';
+import { LANGUAGES, saveLanguage, useI18n } from '../lib/i18n';
 
 // ── Workspace card ───────────────────────────────────────────────────────────
 
 function WorkspaceCard() {
+  const { t, lang } = useI18n();
   const [branding, setBranding] = useState<BrandingState>({
     workspaceName: '',
     workspaceLogo: '',
@@ -54,7 +56,7 @@ function WorkspaceCard() {
     setLogoError('');
 
     if (file.size > 200 * 1024) {
-      setLogoError('Image must be 200 KB or smaller.');
+      setLogoError(t('settings.workspace.logo.errorSize'));
       // Reset the file input so the same file triggers change again if needed.
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
@@ -80,12 +82,12 @@ function WorkspaceCard() {
 
   return (
     <div className="card settings-card">
-      <h2 className="settings-card__title">Workspace</h2>
+      <h2 className="settings-card__title">{t('settings.workspace.title')}</h2>
 
       {/* Workspace name */}
       <div className="form-field">
         <label className="form-label" htmlFor="workspace-name">
-          Workspace name
+          {t('settings.workspace.name.label')}
         </label>
         <form onSubmit={handleNameSave}>
           <div className="settings-input-row">
@@ -103,25 +105,25 @@ function WorkspaceCard() {
               onBlur={handleNameBlur}
             />
             <button type="submit" className="btn btn--primary">
-              Save
+              {t('common.save')}
             </button>
-            {nameSaved && <span className="settings-saved">Saved</span>}
+            {nameSaved && <span className="settings-saved">{t('common.saved')}</span>}
           </div>
         </form>
         <p className="form-hint form-hint--block">
-          Shown in the sidebar. Leave blank to use the default NEXUS branding.
+          {t('settings.workspace.name.hint')}
         </p>
       </div>
 
       {/* Logo upload */}
       <div className="form-field">
-        <label className="form-label">Logo</label>
+        <label className="form-label">{t('settings.workspace.logo.label')}</label>
         <div className="logo-upload-row">
           {branding.workspaceLogo ? (
             <img
               className="logo-preview"
               src={branding.workspaceLogo}
-              alt="Workspace logo"
+              alt={t('settings.workspace.logo.alt')}
             />
           ) : (
             <div className="logo-upload-placeholder" aria-hidden="true">⊞</div>
@@ -132,7 +134,9 @@ function WorkspaceCard() {
               className="btn btn--ghost btn--sm"
               onClick={() => fileInputRef.current?.click()}
             >
-              {branding.workspaceLogo ? 'Replace logo' : 'Upload logo'}
+              {branding.workspaceLogo
+                ? t('settings.workspace.logo.replace')
+                : t('settings.workspace.logo.upload')}
             </button>
             {branding.workspaceLogo && (
               <button
@@ -140,7 +144,7 @@ function WorkspaceCard() {
                 className="btn btn--danger btn--sm"
                 onClick={handleRemoveLogo}
               >
-                Remove logo
+                {t('settings.workspace.logo.remove')}
               </button>
             )}
           </div>
@@ -155,13 +159,13 @@ function WorkspaceCard() {
         </div>
         {logoError && <p className="logo-upload-error">{logoError}</p>}
         <p className="form-hint form-hint--block">
-          Max 200 KB. Displayed at up to 28 px height in the sidebar.
+          {t('settings.workspace.logo.hint')}
         </p>
       </div>
 
       {/* Theme picker */}
       <div className="form-field">
-        <label className="form-label">Color theme</label>
+        <label className="form-label">{t('settings.workspace.theme.label')}</label>
         <div className="theme-picker">
           {THEME_PRESETS.map(preset => (
             <button
@@ -182,8 +186,26 @@ function WorkspaceCard() {
           ))}
         </div>
         <p className="form-hint form-hint--block" style={{ marginTop: '8px' }}>
-          Applied immediately and persisted across restarts.
+          {t('settings.workspace.theme.hint')}
         </p>
+      </div>
+
+      {/* Language picker */}
+      <div className="form-field">
+        <label className="form-label">{t('settings.language.label')}</label>
+        <div className="settings-input-row">
+          {LANGUAGES.map(option => (
+            <button
+              key={option.id}
+              type="button"
+              className={`btn btn--sm ${lang === option.id ? 'btn--primary' : 'btn--ghost'}`}
+              onClick={() => saveLanguage(option.id)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <p className="form-hint form-hint--block">{t('settings.language.hint')}</p>
       </div>
     </div>
   );
@@ -193,6 +215,7 @@ function WorkspaceCard() {
 
 export function Settings() {
   const { pollIntervalSec, updatePollInterval } = useStore();
+  const { t } = useI18n();
   const [interval, setInterval] = useState(String(pollIntervalSec));
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -201,7 +224,7 @@ export function Settings() {
     e.preventDefault();
     const n = parseInt(interval, 10);
     if (isNaN(n) || n < 15) {
-      setError('Minimum interval is 15 seconds.');
+      setError(t('settings.polling.interval.errorMin'));
       return;
     }
     setError('');
@@ -213,7 +236,7 @@ export function Settings() {
   return (
     <div className="page">
       <div className="page__header">
-        <h1 className="page__title">Settings</h1>
+        <h1 className="page__title">{t('settings.title')}</h1>
       </div>
 
       <div className="settings-layout">
@@ -222,11 +245,11 @@ export function Settings() {
 
         {/* Poll interval */}
         <div className="card settings-card">
-          <h2 className="settings-card__title">Polling</h2>
+          <h2 className="settings-card__title">{t('settings.polling.title')}</h2>
           <form onSubmit={handleSave}>
             <div className="form-field">
               <label className="form-label" htmlFor="poll-interval">
-                Refresh interval (seconds)
+                {t('settings.polling.interval.label')}
               </label>
               <div className="settings-input-row">
                 <input
@@ -242,13 +265,13 @@ export function Settings() {
                   }}
                 />
                 <button type="submit" className="btn btn--primary">
-                  Save
+                  {t('common.save')}
                 </button>
-                {saved && <span className="settings-saved">Saved</span>}
+                {saved && <span className="settings-saved">{t('common.saved')}</span>}
               </div>
               {error && <p className="form-error">{error}</p>}
               <p className="form-hint form-hint--block">
-                Minimum 15 s. How often Nexus re-checks all projects in the background.
+                {t('settings.polling.interval.hint')}
               </p>
             </div>
           </form>
@@ -256,28 +279,24 @@ export function Settings() {
 
         {/* Storage info */}
         <div className="card settings-card">
-          <h2 className="settings-card__title">Data Storage</h2>
+          <h2 className="settings-card__title">{t('settings.storage.title')}</h2>
           <div className="settings-info-list">
             <div className="settings-info-item">
-              <span className="settings-info-item__label">Project data</span>
+              <span className="settings-info-item__label">{t('settings.storage.projectData.label')}</span>
               <span className="settings-info-item__value">
-                SQLite database (<code>nexus.db</code>) in the app data directory.
-                No data leaves your machine.
+                {t('settings.storage.projectData.value', { db: 'nexus.db' })}
               </span>
             </div>
             <div className="settings-info-item">
-              <span className="settings-info-item__label">Secrets</span>
+              <span className="settings-info-item__label">{t('settings.storage.secrets.label')}</span>
               <span className="settings-info-item__value">
-                Stored in the OS credential store — Windows Credential Manager on
-                Windows, macOS Keychain on macOS. Never written to disk in plain text.
+                {t('settings.storage.secrets.value')}
               </span>
             </div>
             <div className="settings-info-item">
-              <span className="settings-info-item__label">Bundle format</span>
+              <span className="settings-info-item__label">{t('settings.storage.bundle.label')}</span>
               <span className="settings-info-item__value">
-                Exported <code>.nexusproj</code> files are encrypted with AES-256-GCM.
-                The key is derived from your passphrase using Argon2id.
-                Without the passphrase the file is unreadable.
+                {t('settings.storage.bundle.value', { ext: '.nexusproj' })}
               </span>
             </div>
           </div>
@@ -285,16 +304,16 @@ export function Settings() {
 
         {/* About */}
         <div className="card settings-card">
-          <h2 className="settings-card__title">About</h2>
+          <h2 className="settings-card__title">{t('settings.about.title')}</h2>
           <div className="settings-info-list">
             <div className="settings-info-item">
-              <span className="settings-info-item__label">Version</span>
+              <span className="settings-info-item__label">{t('settings.about.version.label')}</span>
               <span className="settings-info-item__value">0.1.0</span>
             </div>
             <div className="settings-info-item">
-              <span className="settings-info-item__label">Architecture</span>
+              <span className="settings-info-item__label">{t('settings.about.arch.label')}</span>
               <span className="settings-info-item__value">
-                Tauri 2 · React 19 · local-first
+                {t('settings.about.arch.value')}
               </span>
             </div>
           </div>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Ticket } from '../types';
 import { timeAgo } from '../lib/format';
 import { TicketModal } from './TicketModal';
+import { useI18n } from '../lib/i18n';
 
 type FilterTab = 'all' | 'open' | 'resolved' | 'closed';
 
@@ -11,21 +12,6 @@ interface TicketTableProps {
   onSendMessage?: (ticketId: number | string, message: string) => Promise<void>;
   onLoadMessages?: (ticketId: number | string) => Promise<import('../types').TicketMessage[]>;
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  open: 'Open',
-  pending: 'Pending',
-  in_progress: 'In Progress',
-  resolved: 'Resolved',
-  closed: 'Closed',
-};
-
-const PRIORITY_LABELS: Record<string, string> = {
-  critical: 'Critical',
-  high: 'High',
-  medium: 'Medium',
-  low: 'Low',
-};
 
 function statusClass(status: string): string {
   switch (status) {
@@ -53,29 +39,53 @@ function isOpen(t: Ticket) {
 }
 
 export function TicketTable({ tickets, onStatusChange, onSendMessage, onLoadMessages }: TicketTableProps) {
+  const { t } = useI18n();
   const [filter, setFilter] = useState<FilterTab>('all');
   const [openTicketId, setOpenTicketId] = useState<number | string | null>(null);
 
-  const openTicket = openTicketId !== null ? tickets.find(t => t.id === openTicketId) : undefined;
+  const openTicket = openTicketId !== null ? tickets.find(tk => tk.id === openTicketId) : undefined;
 
   const counts = {
     all: tickets.length,
     open: tickets.filter(isOpen).length,
-    resolved: tickets.filter(t => t.status === 'resolved').length,
-    closed: tickets.filter(t => t.status === 'closed').length,
+    resolved: tickets.filter(tk => tk.status === 'resolved').length,
+    closed: tickets.filter(tk => tk.status === 'closed').length,
   };
 
-  const filtered = tickets.filter(t => {
+  const filtered = tickets.filter(tk => {
     if (filter === 'all') return true;
-    if (filter === 'open') return isOpen(t);
-    return t.status === filter;
+    if (filter === 'open') return isOpen(tk);
+    return tk.status === filter;
   });
 
-  const tabs: { key: FilterTab; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'open', label: 'Open' },
-    { key: 'resolved', label: 'Resolved' },
-    { key: 'closed', label: 'Closed' },
+  // Status label lookup using i18n
+  function statusLabel(status: string): string {
+    const map: Record<string, string> = {
+      open: t('tickets.status.open'),
+      pending: t('tickets.status.pending'),
+      in_progress: t('tickets.status.inProgress'),
+      resolved: t('tickets.status.resolved'),
+      closed: t('tickets.status.closed'),
+    };
+    return map[status] ?? status;
+  }
+
+  // Priority label lookup using i18n
+  function priorityLabel(priority: string): string {
+    const map: Record<string, string> = {
+      critical: t('tickets.priority.critical'),
+      high: t('tickets.priority.high'),
+      medium: t('tickets.priority.medium'),
+      low: t('tickets.priority.low'),
+    };
+    return map[priority] ?? priority;
+  }
+
+  const tabs: { key: FilterTab; labelKey: string }[] = [
+    { key: 'all', labelKey: 'tickets.filter.all' },
+    { key: 'open', labelKey: 'tickets.filter.open' },
+    { key: 'resolved', labelKey: 'tickets.filter.resolved' },
+    { key: 'closed', labelKey: 'tickets.filter.closed' },
   ];
 
   return (
@@ -87,7 +97,7 @@ export function TicketTable({ tickets, onStatusChange, onSendMessage, onLoadMess
             className={`chip${filter === tab.key ? ' chip--active' : ''}`}
             onClick={() => setFilter(tab.key)}
           >
-            {tab.label}
+            {t(tab.labelKey)}
             <span className="chip__count">{counts[tab.key]}</span>
           </button>
         ))}
@@ -96,16 +106,16 @@ export function TicketTable({ tickets, onStatusChange, onSendMessage, onLoadMess
       {filtered.length === 0 ? (
         <div className="ticket-table__empty">
           <span className="ticket-table__empty-icon">✓</span>
-          <p>No tickets in this view.</p>
+          <p>{t('tickets.empty')}</p>
         </div>
       ) : (
         <table className="table table--clickable">
           <thead>
             <tr>
-              <th>Subject</th>
-              <th>Status</th>
-              <th>Priority</th>
-              <th>Updated</th>
+              <th>{t('tickets.col.subject')}</th>
+              <th>{t('tickets.col.status')}</th>
+              <th>{t('tickets.col.priority')}</th>
+              <th>{t('tickets.col.updated')}</th>
             </tr>
           </thead>
           <tbody>
@@ -118,12 +128,12 @@ export function TicketTable({ tickets, onStatusChange, onSendMessage, onLoadMess
                 </td>
                 <td>
                   <span className={statusClass(ticket.status)}>
-                    {STATUS_LABELS[ticket.status] ?? ticket.status}
+                    {statusLabel(ticket.status)}
                   </span>
                 </td>
                 <td>
                   <span className={priorityClass(ticket.priority)}>
-                    {PRIORITY_LABELS[ticket.priority] ?? ticket.priority}
+                    {priorityLabel(ticket.priority)}
                   </span>
                 </td>
                 <td className="table__time">

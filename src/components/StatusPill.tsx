@@ -1,3 +1,4 @@
+import { useI18n } from '../lib/i18n';
 import type { HealthState } from '../types';
 
 interface StatusPillProps {
@@ -5,14 +6,16 @@ interface StatusPillProps {
   size?: 'sm' | 'md';
 }
 
-const labels: Record<HealthState, string> = {
-  healthy: 'Healthy',
-  warning: 'Warning',
-  critical: 'Critical',
-  unknown: 'Unknown',
-};
-
 export function StatusPill({ health, size = 'md' }: StatusPillProps) {
+  const { t } = useI18n();
+
+  const labels: Record<HealthState, string> = {
+    healthy: t('common.health.healthy'),
+    warning: t('common.health.warning'),
+    critical: t('common.health.critical'),
+    unknown: t('common.health.unknown'),
+  };
+
   return (
     <span className={`status-pill status-pill--${health} status-pill--${size}`}>
       <span className="status-pill__dot" />

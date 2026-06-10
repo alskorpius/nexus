@@ -4,6 +4,7 @@ import { useStore } from '../state/store';
 import { StatusPill } from '../components/StatusPill';
 import { ProjectForm } from '../components/ProjectForm';
 import { PassphraseModal } from '../components/PassphraseModal';
+import { useI18n } from '../lib/i18n';
 
 type Modal =
   | { type: 'add' }
@@ -14,6 +15,7 @@ type Modal =
   | null;
 
 export function Projects() {
+  const { t } = useI18n();
   const { projects, statuses, setNav, removeProject, exportProject, importProject } = useStore();
   const [modal, setModal] = useState<Modal>(null);
   const [exportResult, setExportResult] = useState<{ id: number; path: string } | null>(null);
@@ -52,27 +54,27 @@ export function Projects() {
   return (
     <div className="page">
       <div className="page__header">
-        <h1 className="page__title">Projects</h1>
+        <h1 className="page__title">{t('projects.page.title')}</h1>
         <div className="page__actions">
           <button className="btn btn--ghost" onClick={() => setModal({ type: 'import' })}>
-            Import .nexusproj
+            {t('projects.page.importBtn')}
           </button>
           <button className="btn btn--primary" onClick={() => setModal({ type: 'add' })}>
-            + Add project
+            {t('projects.page.addBtn')}
           </button>
         </div>
       </div>
 
       {importError && (
         <div className="alert alert--error">
-          Import failed: {importError}
+          {t('projects.alert.importFailed', { error: importError })}
           <button className="alert__close" onClick={() => setImportError(null)}>✕</button>
         </div>
       )}
 
       {exportResult && (
         <div className="alert alert--success">
-          Exported to: <code>{exportResult.path}</code>
+          {t('projects.alert.exportedTo')} <code>{exportResult.path}</code>
           <button className="alert__close" onClick={() => setExportResult(null)}>✕</button>
         </div>
       )}
@@ -80,10 +82,10 @@ export function Projects() {
       {projects.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state__icon">⊞</div>
-          <h2 className="empty-state__title">No projects</h2>
-          <p className="empty-state__body">Add your first project to get started.</p>
+          <h2 className="empty-state__title">{t('projects.empty.title')}</h2>
+          <p className="empty-state__body">{t('projects.empty.body')}</p>
           <button className="btn btn--primary" onClick={() => setModal({ type: 'add' })}>
-            + Add project
+            {t('projects.page.addBtn')}
           </button>
         </div>
       ) : (
@@ -91,11 +93,11 @@ export function Projects() {
           <table className="table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>API Base</th>
-                <th>Git</th>
-                <th>Health</th>
-                <th>Actions</th>
+                <th>{t('projects.table.name')}</th>
+                <th>{t('projects.table.apiBase')}</th>
+                <th>{t('projects.table.git')}</th>
+                <th>{t('projects.table.health')}</th>
+                <th>{t('projects.table.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -124,25 +126,25 @@ export function Projects() {
                           className="btn btn--ghost btn--sm"
                           onClick={() => setNav({ page: 'project', projectId: project.id })}
                         >
-                          Open
+                          {t('projects.table.open')}
                         </button>
                         <button
                           className="btn btn--ghost btn--sm"
                           onClick={() => setModal({ type: 'edit', project })}
                         >
-                          Edit
+                          {t('common.edit')}
                         </button>
                         <button
                           className="btn btn--ghost btn--sm"
                           onClick={() => setModal({ type: 'export', projectId: project.id })}
                         >
-                          Export
+                          {t('projects.table.export')}
                         </button>
                         <button
                           className="btn btn--danger btn--sm"
                           onClick={() => setModal({ type: 'delete', project })}
                         >
-                          Delete
+                          {t('common.delete')}
                         </button>
                       </div>
                     </td>
@@ -163,7 +165,7 @@ export function Projects() {
       )}
       {modal?.type === 'export' && (
         <PassphraseModal
-          title="Export Project Bundle"
+          title={t('projects.passphrase.exportTitle')}
           mode="export"
           onConfirm={p => handleExport(modal.projectId, p)}
           onCancel={() => setModal(null)}
@@ -171,7 +173,7 @@ export function Projects() {
       )}
       {modal?.type === 'import' && (
         <PassphraseModal
-          title="Import Project Bundle"
+          title={t('projects.passphrase.importTitle')}
           mode="import"
           onConfirm={handleImport}
           onCancel={() => setModal(null)}
@@ -181,22 +183,21 @@ export function Projects() {
         <div className="modal-overlay" onClick={() => setModal(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal__header">
-              <h2 className="modal__title">Delete Project</h2>
+              <h2 className="modal__title">{t('projects.delete.title')}</h2>
             </div>
             <div className="modal__body">
               <p>
-                Delete <strong>{modal.project.name}</strong>? This removes the project and all
-                stored secrets. This action cannot be undone.
+                {t('projects.delete.body', { name: modal.project.name })}
               </p>
               <div className="modal__actions">
                 <button className="btn btn--ghost" onClick={() => setModal(null)}>
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   className="btn btn--danger"
                   onClick={() => handleDelete(modal.project)}
                 >
-                  Delete
+                  {t('common.delete')}
                 </button>
               </div>
             </div>

@@ -3,6 +3,7 @@ import { StatusPill } from '../components/StatusPill';
 import { ScoreBadge } from '../components/ScoreBadge';
 import { timeAgo } from '../lib/format';
 import { computeHealthScore } from '../lib/score';
+import { useI18n } from '../lib/i18n';
 import type { Ticket } from '../types';
 
 function isOpen(t: Ticket) {
@@ -15,18 +16,19 @@ function isCritical(t: Ticket) {
 
 export function Dashboard() {
   const { projects, statuses, setNav, refreshAll, refreshProject, refreshing } = useStore();
+  const { t } = useI18n();
 
   if (projects.length === 0) {
     return (
       <div className="page page--empty">
         <div className="empty-state">
           <div className="empty-state__icon">⬡</div>
-          <h2 className="empty-state__title">No projects yet</h2>
+          <h2 className="empty-state__title">{t('dashboard.empty.title')}</h2>
           <p className="empty-state__body">
-            Add your first project to start monitoring services, tickets, and git activity.
+            {t('dashboard.empty.body')}
           </p>
           <button className="btn btn--primary" onClick={() => setNav({ page: 'projects' })}>
-            Go to Projects
+            {t('dashboard.empty.cta')}
           </button>
         </div>
       </div>
@@ -53,56 +55,56 @@ export function Dashboard() {
   return (
     <div className="page">
       <div className="page__header">
-        <h1 className="page__title">Dashboard</h1>
+        <h1 className="page__title">{t('dashboard.title')}</h1>
         <button
           className="btn btn--ghost btn--icon-label"
           onClick={refreshAll}
           disabled={anyRefreshing}
         >
           <span className={`btn__icon${anyRefreshing ? ' btn__icon--spin' : ''}`}>↻</span>
-          Refresh all
+          {t('dashboard.refreshAll')}
         </button>
       </div>
 
       {/* Stat cards */}
       <div className="stat-grid">
         <div className="stat-card">
-          <span className="stat-card__label">Projects</span>
+          <span className="stat-card__label">{t('dashboard.stats.projects')}</span>
           <span className="stat-card__value">{projects.length}</span>
         </div>
         <div className="stat-card stat-card--healthy">
-          <span className="stat-card__label">Healthy</span>
+          <span className="stat-card__label">{t('dashboard.stats.healthy')}</span>
           <span className="stat-card__value">{healthyCount}</span>
         </div>
         <div className="stat-card stat-card--warning">
-          <span className="stat-card__label">Warning</span>
+          <span className="stat-card__label">{t('dashboard.stats.warning')}</span>
           <span className="stat-card__value">{warningCount}</span>
         </div>
         <div className="stat-card stat-card--critical">
-          <span className="stat-card__label">Critical</span>
+          <span className="stat-card__label">{t('dashboard.stats.critical')}</span>
           <span className="stat-card__value">{criticalCount}</span>
         </div>
         <div className="stat-card">
-          <span className="stat-card__label">Open Tickets</span>
+          <span className="stat-card__label">{t('dashboard.stats.openTickets')}</span>
           <span className="stat-card__value">{openTickets}</span>
         </div>
         <div className={`stat-card${criticalTickets > 0 ? ' stat-card--critical' : ''}`}>
-          <span className="stat-card__label">Critical Tickets</span>
+          <span className="stat-card__label">{t('dashboard.stats.criticalTickets')}</span>
           <span className="stat-card__value">{criticalTickets}</span>
         </div>
         <div className="stat-card">
-          <span className="stat-card__label">Open MRs</span>
+          <span className="stat-card__label">{t('dashboard.stats.openMrs')}</span>
           <span className="stat-card__value">{openMrs}</span>
         </div>
         <div className={`stat-card${failedPipelines > 0 ? ' stat-card--critical' : ''}`}>
-          <span className="stat-card__label">Failed Pipelines</span>
+          <span className="stat-card__label">{t('dashboard.stats.failedPipelines')}</span>
           <span className="stat-card__value">{failedPipelines}</span>
         </div>
       </div>
 
       {/* Project rows */}
       <div className="section">
-        <h2 className="section__title">Projects</h2>
+        <h2 className="section__title">{t('dashboard.section.projects')}</h2>
         <div className="project-list">
           {projects.map(project => {
             const status = statuses[project.id];
@@ -141,16 +143,16 @@ export function Dashboard() {
                 </div>
                 <div className="project-row__tickets">
                   {openCount > 0 ? (
-                    <span className="badge badge--amber">{openCount} tickets</span>
+                    <span className="badge badge--amber">{t('dashboard.row.tickets', { n: openCount })}</span>
                   ) : (
-                    <span className="muted">0 tickets</span>
+                    <span className="muted">{t('dashboard.row.ticketsZero')}</span>
                   )}
                 </div>
                 <div className="project-row__mrs">
                   {mrCount > 0 ? (
-                    <span className="badge badge--blue">{mrCount} MRs</span>
+                    <span className="badge badge--blue">{t('dashboard.row.mrs', { n: mrCount })}</span>
                   ) : (
-                    <span className="muted">0 MRs</span>
+                    <span className="muted">{t('dashboard.row.mrsZero')}</span>
                   )}
                 </div>
                 <div className="project-row__score" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -170,9 +172,9 @@ export function Dashboard() {
                           ? 'var(--red-badge-text)'
                           : 'var(--amber-badge-text)',
                       }}
-                      title={`SSL expires in ${sslDaysLeft} days`}
+                      title={t('dashboard.row.sslTitle', { n: sslDaysLeft ?? 0 })}
                     >
-                      SSL {sslDaysLeft}d
+                      {t('dashboard.row.sslLabel', { n: sslDaysLeft ?? 0 })}
                     </span>
                   )}
                 </div>
@@ -180,7 +182,7 @@ export function Dashboard() {
                   {status?.checkedAt ? (
                     <span className="muted">{timeAgo(status.checkedAt)}</span>
                   ) : (
-                    <span className="muted">not checked</span>
+                    <span className="muted">{t('dashboard.row.notChecked')}</span>
                   )}
                 </div>
                 <div className="project-row__actions">
@@ -191,7 +193,7 @@ export function Dashboard() {
                       refreshProject(project.id);
                     }}
                     disabled={isRefreshing}
-                    aria-label="Refresh project"
+                    aria-label={t('dashboard.row.refreshAriaLabel')}
                   >
                     <span className={isRefreshing ? 'btn__icon--spin' : ''}>↻</span>
                   </button>

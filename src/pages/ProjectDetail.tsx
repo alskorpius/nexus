@@ -8,6 +8,7 @@ import { ProjectForm } from '../components/ProjectForm';
 import { PassphraseModal } from '../components/PassphraseModal';
 import { timeAgo } from '../lib/format';
 import { computeHealthScore } from '../lib/score';
+import { useI18n, getLocale } from '../lib/i18n';
 
 interface ProjectDetailProps {
   projectId: number;
@@ -27,6 +28,8 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     exportProject,
   } = useStore();
 
+  const { t } = useI18n();
+
   const project = projects.find(p => p.id === projectId);
   const status = statuses[projectId];
   const isRefreshing = refreshing[projectId];
@@ -41,9 +44,9 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     return (
       <div className="page">
         <div className="empty-state">
-          <p>Project not found.</p>
+          <p>{t('detail.notFound')}</p>
           <button className="btn btn--ghost" onClick={() => setNav({ page: 'projects' })}>
-            Back to Projects
+            {t('detail.notFound.back')}
           </button>
         </div>
       </div>
@@ -86,7 +89,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         className="back-link"
         onClick={() => setNav({ page: 'projects' })}
       >
-        ← Projects
+        {t('detail.back')}
       </button>
 
       {/* Header */}
@@ -106,7 +109,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             )}
             {status?.checkedAt && (
               <span className="muted detail-meta__time">
-                checked {timeAgo(status.checkedAt)}
+                {t('detail.checkedAgo', { ago: timeAgo(status.checkedAt) })}
               </span>
             )}
           </div>
@@ -117,53 +120,53 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               disabled={isRefreshing}
             >
               <span className={isRefreshing ? 'btn__icon--spin' : ''}>↻</span>
-              Refresh
+              {t('detail.action.refresh')}
             </button>
-            <button className="btn btn--ghost" onClick={() => setShowEdit(true)}>Edit</button>
-            <button className="btn btn--ghost" onClick={() => setShowExport(true)}>Export</button>
-            <button className="btn btn--danger" onClick={() => setShowDelete(true)}>Delete</button>
+            <button className="btn btn--ghost" onClick={() => setShowEdit(true)}>{t('detail.action.edit')}</button>
+            <button className="btn btn--ghost" onClick={() => setShowExport(true)}>{t('detail.action.export')}</button>
+            <button className="btn btn--danger" onClick={() => setShowDelete(true)}>{t('detail.action.delete')}</button>
           </div>
         </div>
       </div>
 
       {exportResult && (
         <div className="alert alert--success">
-          Exported to: <code>{exportResult}</code>
+          {t('detail.export.success')} <code>{exportResult}</code>
           <button className="alert__close" onClick={() => setExportResult(null)}>✕</button>
         </div>
       )}
       {exportError && (
         <div className="alert alert--error">
-          Export failed: {exportError}
+          {t('detail.export.failed')} {exportError}
           <button className="alert__close" onClick={() => setExportError(null)}>✕</button>
         </div>
       )}
 
       {/* 1. Service Health */}
       <div className="section">
-        <h2 className="section__title">Service Health</h2>
+        <h2 className="section__title">{t('detail.health.title')}</h2>
         <div className="card detail-health">
           {project.healthEndpoint ? (
             <>
               <div className="detail-health__row">
-                <span className="detail-health__label">Endpoint</span>
+                <span className="detail-health__label">{t('detail.health.label.endpoint')}</span>
                 <span className="mono muted">{project.healthEndpoint}</span>
               </div>
               <div className="detail-health__row">
-                <span className="detail-health__label">HTTP Status</span>
+                <span className="detail-health__label">{t('detail.health.label.httpStatus')}</span>
                 <span className={status?.httpStatus && status.httpStatus >= 200 && status.httpStatus < 300 ? 'text-healthy' : 'text-critical'}>
                   {status?.httpStatus ?? '—'}
                 </span>
               </div>
               {status?.error && (
                 <div className="detail-health__row detail-health__row--error">
-                  <span className="detail-health__label">Error</span>
+                  <span className="detail-health__label">{t('detail.health.label.error')}</span>
                   <span className="text-critical">{status.error}</span>
                 </div>
               )}
               {status?.healthMeta && (
                 <div className="detail-health__row">
-                  <span className="detail-health__label">Reported</span>
+                  <span className="detail-health__label">{t('detail.health.label.reported')}</span>
                   <span className="muted">
                     {[
                       status.healthMeta.status,
@@ -204,11 +207,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                   </div>
                 ))}
               {!status && (
-                <p className="muted">Not yet checked. Click Refresh.</p>
+                <p className="muted">{t('detail.health.notChecked')}</p>
               )}
             </>
           ) : (
-            <p className="muted">No health endpoint configured.</p>
+            <p className="muted">{t('detail.health.noEndpoint')}</p>
           )}
         </div>
       </div>
@@ -216,30 +219,30 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       {/* 2. SSL Certificate */}
       {ssl && (
         <div className="section">
-          <h2 className="section__title">SSL Certificate</h2>
+          <h2 className="section__title">{t('detail.ssl.title')}</h2>
           <div className="card detail-health">
             <div className="detail-health__row">
-              <span className="detail-health__label">Host</span>
+              <span className="detail-health__label">{t('detail.ssl.label.host')}</span>
               <span className="mono muted">{ssl.host}</span>
             </div>
             {ssl.error && !ssl.expiresAt ? (
               <div className="detail-health__row detail-health__row--error">
-                <span className="detail-health__label">Error</span>
+                <span className="detail-health__label">{t('detail.ssl.label.error')}</span>
                 <span className="muted">{ssl.error}</span>
               </div>
             ) : (
               <>
                 {ssl.issuer && (
                   <div className="detail-health__row">
-                    <span className="detail-health__label">Issuer</span>
+                    <span className="detail-health__label">{t('detail.ssl.label.issuer')}</span>
                     <span className="muted">{ssl.issuer}</span>
                   </div>
                 )}
                 {ssl.expiresAt && (
                   <div className="detail-health__row">
-                    <span className="detail-health__label">Expires</span>
+                    <span className="detail-health__label">{t('detail.ssl.label.expires')}</span>
                     <span className="muted">
-                      {new Date(ssl.expiresAt).toLocaleDateString(undefined, {
+                      {new Date(ssl.expiresAt).toLocaleDateString(getLocale(), {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric',
@@ -249,7 +252,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                 )}
                 {ssl.daysLeft !== null && (
                   <div className="detail-health__row">
-                    <span className="detail-health__label">Days left</span>
+                    <span className="detail-health__label">{t('detail.ssl.label.daysLeft')}</span>
                     <span
                       style={{
                         color: ssl.daysLeft < 7
@@ -260,13 +263,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                         fontWeight: 600,
                       }}
                     >
-                      {ssl.daysLeft} days
+                      {t('detail.ssl.days', { days: ssl.daysLeft })}
                     </span>
                   </div>
                 )}
                 {ssl.error && (
                   <div className="detail-health__row">
-                    <span className="detail-health__label">Note</span>
+                    <span className="detail-health__label">{t('detail.ssl.label.note')}</span>
                     <span className="muted">{ssl.error}</span>
                   </div>
                 )}
@@ -278,11 +281,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
       {/* 3. Support Tickets */}
       <div className="section">
-        <h2 className="section__title">Support Tickets</h2>
+        <h2 className="section__title">{t('detail.tickets.title')}</h2>
         {hasTicketsError ? (
           <div className="card">
             <p className="text-critical">
-              Failed to load tickets: {status?.ticketsError}
+              {t('detail.tickets.loadFailed')} {status?.ticketsError}
             </p>
           </div>
         ) : status?.tickets ? (
@@ -296,31 +299,33 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           <div className="card">
             <p className="muted">
               {project.authMethod === 'none' && !project.supportEndpoint
-                ? 'Configure auth method and support endpoint to load tickets.'
-                : 'Not yet loaded. Click Refresh.'}
+                ? t('detail.tickets.configureAuth')
+                : t('detail.tickets.notLoaded')}
             </p>
           </div>
         )}
       </div>
 
-      {/* 3. Git Activity */}
+      {/* 4. Git Activity */}
       <div className="section">
-        <h2 className="section__title">Git Activity</h2>
+        <h2 className="section__title">{t('detail.git.title')}</h2>
         {hasGitError ? (
           <div className="card">
-            <p className="text-critical">Failed to load git data: {status?.gitError}</p>
+            <p className="text-critical">{t('detail.git.loadFailed')} {status?.gitError}</p>
           </div>
         ) : git ? (
           <div className="git-detail">
             {git.failedPipelines !== null && git.failedPipelines > 0 && (
               <div className="alert alert--error">
-                {git.failedPipelines} failed pipeline{git.failedPipelines > 1 ? 's' : ''}
+                {git.failedPipelines > 1
+                  ? t('detail.git.failedPipelines', { count: git.failedPipelines })
+                  : t('detail.git.failedPipeline', { count: git.failedPipelines })}
               </div>
             )}
 
             {git.branches.length > 0 && (
               <div className="card">
-                <h3 className="card__subtitle">Branches ({git.branches.length})</h3>
+                <h3 className="card__subtitle">{t('detail.git.branches', { count: git.branches.length })}</h3>
                 <div className="health-chips">
                   {git.branches.slice(0, 12).map(b => (
                     <button
@@ -328,7 +333,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                       type="button"
                       className={`branch-chip${b.default ? ' branch-chip--default' : ''}`}
                       onClick={() => b.webUrl && openLink(b.webUrl)}
-                      title={b.lastActivity ? `updated ${timeAgo(b.lastActivity)}` : b.name}
+                      title={b.lastActivity ? t('detail.git.branchUpdated', { ago: timeAgo(b.lastActivity) }) : b.name}
                     >
                       {b.name}
                       {b.lastActivity && (
@@ -337,7 +342,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                     </button>
                   ))}
                   {git.branches.length > 12 && (
-                    <span className="muted">+{git.branches.length - 12} more</span>
+                    <span className="muted">{t('detail.git.branchMore', { count: git.branches.length - 12 })}</span>
                   )}
                 </div>
               </div>
@@ -345,7 +350,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
             {git.mrs.length > 0 && (
               <div className="card">
-                <h3 className="card__subtitle">Open MRs / PRs ({git.openMrCount})</h3>
+                <h3 className="card__subtitle">{t('detail.git.mrs', { count: git.openMrCount })}</h3>
                 <div className="git-list">
                   {git.mrs.map((mr, i) => (
                     <div key={i} className="git-list__item">
@@ -356,7 +361,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                         >
                           {mr.title}
                         </button>
-                        <span className="muted git-list__author">by {mr.author}</span>
+                        <span className="muted git-list__author">{t('detail.git.mrAuthor', { author: mr.author })}</span>
                       </div>
                       <span className="muted">{timeAgo(mr.updatedAt)}</span>
                     </div>
@@ -367,7 +372,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
             {git.commits.length > 0 && (
               <div className="card">
-                <h3 className="card__subtitle">Recent Commits</h3>
+                <h3 className="card__subtitle">{t('detail.git.commits')}</h3>
                 <div className="git-list">
                   {git.commits.map((commit, i) => (
                     <div key={i} className="git-list__item">
@@ -378,7 +383,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                         >
                           {commit.message}
                         </button>
-                        <span className="muted git-list__author">by {commit.author}</span>
+                        <span className="muted git-list__author">{t('detail.git.commitAuthor', { author: commit.author })}</span>
                       </div>
                       <span className="muted">{timeAgo(commit.date)}</span>
                     </div>
@@ -389,7 +394,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
             {git.mrs.length === 0 && git.commits.length === 0 && git.branches.length === 0 && (
               <div className="card">
-                <p className="muted">No recent activity.</p>
+                <p className="muted">{t('detail.git.noActivity')}</p>
               </div>
             )}
           </div>
@@ -397,41 +402,41 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           <div className="card">
             <p className="muted">
               {project.gitProvider === 'none'
-                ? 'No git provider configured.'
-                : 'Not yet loaded. Click Refresh.'}
+                ? t('detail.git.noProvider')
+                : t('detail.git.notLoaded')}
             </p>
           </div>
         )}
       </div>
 
-      {/* 4. Links */}
+      {/* 5. Links */}
       {hasLinks && (
         <div className="section">
-          <h2 className="section__title">Links</h2>
+          <h2 className="section__title">{t('detail.links.title')}</h2>
           <div className="links-row">
             {project.docsUrl && (
               <button className="btn btn--ghost" onClick={() => openLink(project.docsUrl)}>
-                ↗ Documentation
+                {t('detail.links.docs')}
               </button>
             )}
             {project.repoUrl && (
               <button className="btn btn--ghost" onClick={() => openLink(project.repoUrl)}>
-                ↗ Repository
+                {t('detail.links.repo')}
               </button>
             )}
             {project.deployEndpoint && (
               <button className="btn btn--ghost" onClick={() => openLink(project.deployEndpoint)}>
-                ↗ Deploy
+                {t('detail.links.deploy')}
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* 5. Notes */}
+      {/* 6. Notes */}
       {project.notes && (
         <div className="section">
-          <h2 className="section__title">Notes</h2>
+          <h2 className="section__title">{t('detail.notes.title')}</h2>
           <div className="card">
             <pre className="notes-text">{project.notes}</pre>
           </div>
@@ -444,7 +449,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       )}
       {showExport && (
         <PassphraseModal
-          title={`Export "${project.name}"`}
+          title={t('detail.export.modalTitle', { name: project.name })}
           mode="export"
           onConfirm={handleExport}
           onCancel={() => setShowExport(false)}
@@ -454,19 +459,18 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         <div className="modal-overlay" onClick={() => setShowDelete(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal__header">
-              <h2 className="modal__title">Delete Project</h2>
+              <h2 className="modal__title">{t('detail.delete.title')}</h2>
             </div>
             <div className="modal__body">
               <p>
-                Delete <strong>{project.name}</strong>? This removes the project and all stored
-                secrets. This action cannot be undone.
+                {t('detail.delete.body', { name: project.name })}
               </p>
               <div className="modal__actions">
                 <button className="btn btn--ghost" onClick={() => setShowDelete(false)}>
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button className="btn btn--danger" onClick={handleDelete}>
-                  Delete
+                  {t('detail.delete.confirm')}
                 </button>
               </div>
             </div>

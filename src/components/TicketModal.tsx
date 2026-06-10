@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Ticket, TicketMessage } from '../types';
 import { formatDate, timeAgo } from '../lib/format';
+import { useI18n } from '../lib/i18n';
 
 interface TicketModalProps {
   ticket: Ticket;
@@ -10,14 +11,6 @@ interface TicketModalProps {
   onLoadMessages?: () => Promise<TicketMessage[]>;
 }
 
-const STATUS_OPTIONS = [
-  { value: 'open', label: 'Open' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'resolved', label: 'Resolved' },
-  { value: 'closed', label: 'Closed' },
-];
-
 export function TicketModal({
   ticket,
   onClose,
@@ -25,6 +18,7 @@ export function TicketModal({
   onSendMessage,
   onLoadMessages,
 }: TicketModalProps) {
+  const { t } = useI18n();
   const [status, setStatus] = useState(ticket.status);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -80,7 +74,7 @@ export function TicketModal({
     try {
       await onSendMessage(message.trim());
       setMessage('');
-      setSendResult('Message sent.');
+      setSendResult(t('tickets.modal.reply.sent'));
       loadThread();
     } catch (err) {
       setError(String(err));
@@ -90,7 +84,27 @@ export function TicketModal({
   }
 
   const statusChanged = status !== ticket.status;
-  const knownStatus = STATUS_OPTIONS.some(o => o.value === ticket.status);
+
+  // Build the status options list. If the current ticket status is not in the
+  // known set, show it verbatim as a leading option (API value, not translated).
+  const knownValues = ['open', 'pending', 'in_progress', 'resolved', 'closed'];
+  const knownStatus = knownValues.includes(ticket.status);
+
+  // Priority display label; unknown API values fall back to the raw string.
+  const priorityLabels: Record<string, string> = {
+    critical: t('tickets.priority.critical'),
+    high: t('tickets.priority.high'),
+    medium: t('tickets.priority.medium'),
+    low: t('tickets.priority.low'),
+  };
+
+  const statusOptions: { value: string; label: string }[] = [
+    { value: 'open', label: t('tickets.status.open') },
+    { value: 'pending', label: t('tickets.status.pending') },
+    { value: 'in_progress', label: t('tickets.status.inProgress') },
+    { value: 'resolved', label: t('tickets.status.resolved') },
+    { value: 'closed', label: t('tickets.status.closed') },
+  ];
 
   return (
     <div
@@ -103,8 +117,8 @@ export function TicketModal({
     >
       <div className="modal modal--large">
         <div className="modal__header">
-          <h2 className="modal__title">Ticket {ticket.ref}</h2>
-          <button className="modal__close" onClick={onClose} aria-label="Close">✕</button>
+          <h2 className="modal__title">{t('tickets.modal.title', { ref: ticket.ref })}</h2>
+          <button className="modal__close" onClick={onClose} aria-label={t('tickets.modal.close')}>✕</button>
         </div>
 
         <div className="modal__body modal__body--scroll">
@@ -112,28 +126,28 @@ export function TicketModal({
 
           <div className="ticket-modal__meta">
             <div className="ticket-modal__meta-item">
-              <span className="ticket-modal__meta-label">Priority</span>
-              <span>{ticket.priority}</span>
+              <span className="ticket-modal__meta-label">{t('tickets.modal.meta.priority')}</span>
+              <span>{priorityLabels[ticket.priority] ?? ticket.priority}</span>
             </div>
             <div className="ticket-modal__meta-item">
-              <span className="ticket-modal__meta-label">Created</span>
+              <span className="ticket-modal__meta-label">{t('tickets.modal.meta.created')}</span>
               <span>{formatDate(ticket.createdAt)}</span>
             </div>
             <div className="ticket-modal__meta-item">
-              <span className="ticket-modal__meta-label">Updated</span>
+              <span className="ticket-modal__meta-label">{t('tickets.modal.meta.updated')}</span>
               <span>{formatDate(ticket.updatedAt)}</span>
             </div>
           </div>
 
           {ticket.details && (
             <div className="ticket-modal__details">
-              <span className="ticket-modal__meta-label">Details</span>
+              <span className="ticket-modal__meta-label">{t('tickets.modal.meta.details')}</span>
               <pre className="notes-text">{ticket.details}</pre>
             </div>
           )}
 
           <div className="form-field">
-            <label className="form-label" htmlFor="ticket-status">Status</label>
+            <label className="form-label" htmlFor="ticket-status">{t('tickets.modal.meta.status')}</label>
             <select
               id="ticket-status"
               className="form-select"
@@ -142,7 +156,7 @@ export function TicketModal({
               disabled={!onStatusChange || saving}
             >
               {!knownStatus && <option value={ticket.status}>{ticket.status}</option>}
-              {STATUS_OPTIONS.map(o => (
+              {statusOptions.map(o => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
@@ -150,11 +164,11 @@ export function TicketModal({
 
           {onLoadMessages && thread !== null && thread.length > 0 && (
             <div className="ticket-modal__thread">
-              <span className="ticket-modal__meta-label">Messages ({thread.length})</span>
+              <span className="ticket-modal__meta-label">{t('tickets.modal.thread', { count: thread.length })}</span>
               {thread.map((m, i) => (
                 <div key={m.id ?? i} className="ticket-message">
                   <div className="ticket-message__head">
-                    <span className="ticket-message__author">{m.author ?? 'unknown'}</span>
+                    <span className="ticket-message__author">{m.author ?? t('tickets.modal.author.unknown')}</span>
                     {m.createdAt && (
                       <span className="muted" title={formatDate(m.createdAt)}>
                         {timeAgo(m.createdAt)}
@@ -167,18 +181,18 @@ export function TicketModal({
             </div>
           )}
           {threadError && (
-            <p className="form-hint form-hint--block">Could not load messages: {threadError}</p>
+            <p className="form-hint form-hint--block">{t('tickets.modal.threadError')} {threadError}</p>
           )}
 
           {onSendMessage && (
             <div className="form-field">
-              <label className="form-label" htmlFor="ticket-message">Reply</label>
+              <label className="form-label" htmlFor="ticket-message">{t('tickets.modal.reply.label')}</label>
               <textarea
                 id="ticket-message"
                 className="form-input form-textarea"
                 value={message}
                 onChange={e => setMessage(e.target.value)}
-                placeholder="Write a message to this ticket…"
+                placeholder={t('tickets.modal.reply.placeholder')}
                 rows={3}
                 disabled={sending}
               />
@@ -190,7 +204,7 @@ export function TicketModal({
                   onClick={handleSend}
                   disabled={!message.trim() || sending}
                 >
-                  {sending ? 'Sending…' : 'Send message'}
+                  {sending ? t('tickets.modal.reply.sending') : t('tickets.modal.reply.send')}
                 </button>
               </div>
             </div>
@@ -200,7 +214,7 @@ export function TicketModal({
 
           <div className="modal__actions">
             <button type="button" className="btn btn--ghost" onClick={onClose}>
-              Close
+              {t('common.close')}
             </button>
             {onStatusChange && (
               <button
@@ -209,7 +223,7 @@ export function TicketModal({
                 onClick={handleApply}
                 disabled={!statusChanged || saving}
               >
-                {saving ? 'Saving…' : 'Update status'}
+                {saving ? t('tickets.modal.status.saving') : t('tickets.modal.status.update')}
               </button>
             )}
           </div>
