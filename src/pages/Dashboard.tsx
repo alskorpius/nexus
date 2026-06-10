@@ -153,15 +153,13 @@ export function Dashboard() {
                     <span className="muted">0 MRs</span>
                   )}
                 </div>
-                <div className="project-row__score">
+                <div className="project-row__score" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   {scoreData ? (
                     <ScoreBadge score={scoreData.score} size="sm" />
                   ) : (
                     <span className="muted">—</span>
                   )}
-                </div>
-                {sslExpiringSoon && (
-                  <div className="project-row__ssl-warn">
+                  {sslExpiringSoon && (
                     <span
                       className="badge"
                       style={{
@@ -176,8 +174,8 @@ export function Dashboard() {
                     >
                       SSL {sslDaysLeft}d
                     </span>
-                  </div>
-                )}
+                  )}
+                </div>
                 <div className="project-row__time">
                   {status?.checkedAt ? (
                     <span className="muted">{timeAgo(status.checkedAt)}</span>

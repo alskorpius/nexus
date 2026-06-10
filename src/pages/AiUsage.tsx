@@ -1,15 +1,33 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { AiAccount } from '../lib/db';
-import { listAiAccounts, saveAiAccount, deleteAiAccount } from '../lib/db';
+import { listAiAccounts, saveAiAccount, deleteAiAccount, getSetting, setSetting } from '../lib/db';
 import { getSecret, setSecret, deleteSecret, secretKeys } from '../lib/secrets';
 import { fetchAiUsage } from '../adapters/ai';
 import type { AiUsageSummary } from '../adapters/ai';
 
 // ---------------------------------------------------------------------------
-// Module-level in-flight promise registry — dedupes concurrent fetches for
-// the same account id so a "Refresh all" mid-flight doesn't double-fetch.
+// Period type
 // ---------------------------------------------------------------------------
-const inFlight = new Map<number, Promise<AiUsageSummary>>();
+
+type Period = '24h' | '7d' | '30d' | '90d';
+
+const PERIOD_DAYS: Record<Period, number> = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 };
+const PERIOD_LABELS: Period[] = ['24h', '7d', '30d', '90d'];
+
+function periodSettingKey(accountId: number): string {
+  return `ai_period_${accountId}`;
+}
+
+function parsePeriod(raw: string | null): Period {
+  if (raw === '24h' || raw === '7d' || raw === '30d' || raw === '90d') return raw;
+  return '30d';
+}
+
+// ---------------------------------------------------------------------------
+// Module-level in-flight promise registry — deduped per `${accountId}:${daysBack}`
+// so period changes never reuse a stale in-flight promise.
+// ---------------------------------------------------------------------------
+const inFlight = new Map<string, Promise<AiUsageSummary>>();
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -31,10 +49,57 @@ function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** YYYY-MM prefix for the current calendar month */
+function currentMonthPrefix(): string {
+  return new Date().toISOString().slice(0, 7);
+}
+
+/** First day of the current calendar month (YYYY-MM-01) */
+function currentMonthStart(): string {
+  return `${currentMonthPrefix()}-01`;
+}
+
+/** Sum costUsd for all days in the current calendar month */
+function monthToDateCost(days: AiUsageSummary['days']): number | null {
+  const prefix = currentMonthPrefix();
+  const monthDays = days.filter((d) => d.date.startsWith(prefix) && d.costUsd !== null);
+  if (monthDays.length === 0) return null;
+  return monthDays.reduce((s, d) => s + (d.costUsd ?? 0), 0);
+}
+
+function budgetSettingKey(accountId: number): string {
+  return `ai_budget_usd_${accountId}`;
+}
+
+function balanceSettingKey(accountId: number): string {
+  return `ai_balance_usd_${accountId}`;
+}
+
+function balanceDateSettingKey(accountId: number): string {
+  return `ai_balance_date_${accountId}`;
+}
+
+/**
+ * Sum costUsd for all days with date >= snapshotDate.
+ * Returns null if no days with known cost exist on or after that date.
+ * NOTE: costs on the snapshot day before the snapshot moment are
+ * slightly double-counted — acceptable for an estimate.
+ */
+function costSinceDate(days: AiUsageSummary['days'], snapshotDate: string): number | null {
+  const relevant = days.filter((d) => d.date >= snapshotDate && d.costUsd !== null);
+  if (relevant.length === 0) return null;
+  return relevant.reduce((s, d) => s + (d.costUsd ?? 0), 0);
+}
+
+/** Earliest date present in a summary's days array, or null if empty. */
+function earliestDay(days: AiUsageSummary['days']): string | null {
+  if (days.length === 0) return null;
+  return days.reduce((min, d) => (d.date < min ? d.date : min), days[0].date);
+}
+
 // ---------------------------------------------------------------------------
 // Mini bar chart (inline divs, no libs)
-// The bar height represents total tokens: uncached input + cache read +
-// cache creation + output.
+// Bar height = total tokens: uncached input + cache read + cache creation + output.
 // ---------------------------------------------------------------------------
 
 function DailyBarChart({ days }: { days: AiUsageSummary['days'] }) {
@@ -71,6 +136,91 @@ function DailyBarChart({ days }: { days: AiUsageSummary['days'] }) {
 }
 
 // ---------------------------------------------------------------------------
+// Budget progress bar + remaining
+// ---------------------------------------------------------------------------
+
+interface BudgetBarProps {
+  spent: number;
+  budget: number;
+}
+
+function BudgetBar({ spent, budget }: BudgetBarProps) {
+  const pct = Math.min((spent / budget) * 100, 100);
+  const remaining = budget - spent;
+  const isNearlyOut = pct >= 90;
+  const isWarning = pct >= 70 && pct < 90;
+  const barColor = isNearlyOut ? '#ef4444' : isWarning ? '#f59e0b' : '#22c55e';
+  const remainingColor = remaining <= 0 || isNearlyOut
+    ? 'var(--error, #ef4444)'
+    : 'inherit';
+
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
+        <span>Monthly budget</span>
+        <span style={{ color: remainingColor, fontWeight: remaining <= 0 ? 700 : 400 }}>
+          {remaining <= 0
+            ? `Over budget by ${fmtCost(Math.abs(remaining))}`
+            : `${fmtCost(remaining)} remaining`}
+        </span>
+      </div>
+      {/* Track */}
+      <div style={{ height: 6, borderRadius: 3, background: 'var(--border, #3a3a4a)', overflow: 'hidden' }}>
+        <div
+          style={{
+            height: '100%',
+            width: `${pct}%`,
+            borderRadius: 3,
+            background: barColor,
+            transition: 'width 0.3s, background 0.3s',
+          }}
+        />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+        <span>Spent: {fmtCost(spent)}</span>
+        <span>Budget: {fmtCost(budget)}</span>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Period segmented control
+// ---------------------------------------------------------------------------
+
+interface PeriodSwitcherProps {
+  value: Period;
+  onChange: (p: Period) => void;
+}
+
+function PeriodSwitcher({ value, onChange }: PeriodSwitcherProps) {
+  return (
+    <div style={{ display: 'flex', gap: 2 }}>
+      {PERIOD_LABELS.map((p) => (
+        <button
+          key={p}
+          onClick={() => onChange(p)}
+          style={{
+            fontSize: 11,
+            padding: '3px 7px',
+            borderRadius: 4,
+            border: '1px solid var(--border, #3a3a4a)',
+            background: value === p ? 'var(--accent, #4f8ef7)' : 'transparent',
+            color: value === p ? '#fff' : 'var(--text-muted)',
+            cursor: 'pointer',
+            fontWeight: value === p ? 600 : 400,
+            lineHeight: 1.4,
+            transition: 'background 0.15s, color 0.15s',
+          }}
+        >
+          {p}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Provider badge
 // ---------------------------------------------------------------------------
 
@@ -100,28 +250,144 @@ function ProviderBadge({ provider }: { provider: AiAccount['provider'] }) {
 // Account card
 // ---------------------------------------------------------------------------
 
+interface BalanceSnapshot {
+  usd: number;
+  date: string; // YYYY-MM-DD
+}
+
 interface AccountCardProps {
   account: AiAccount;
   summary: AiUsageSummary | null;
   loading: boolean;
+  period: Period;
+  budget: number | null;
+  balance: BalanceSnapshot | null;
   onRefresh: (id: number) => void;
   onDelete: (id: number) => void;
+  onPeriodChange: (id: number, p: Period) => void;
+  onBudgetSave: (id: number, value: number | null) => void;
+  onBalanceSave: (id: number, value: number | null) => void;
 }
 
-function AccountCard({ account, summary, loading, onRefresh, onDelete }: AccountCardProps) {
+function AccountCard({
+  account, summary, loading, period, budget, balance,
+  onRefresh, onDelete, onPeriodChange, onBudgetSave, onBalanceSave,
+}: AccountCardProps) {
   const today = summary?.days.find((d) => d.date === todayStr());
   const todayTotal = today
     ? today.inputTokens + today.cacheReadTokens + today.cacheCreationTokens + today.outputTokens
     : null;
 
+  // Budget inline editor state
+  const [budgetInput, setBudgetInput] = useState(budget != null ? String(budget) : '');
+  const [budgetSaving, setBudgetSaving] = useState(false);
+  const [budgetEditing, setBudgetEditing] = useState(false);
+
+  // Sync input when budget prop changes (e.g. initial load)
+  useEffect(() => {
+    if (!budgetEditing) {
+      setBudgetInput(budget != null ? String(budget) : '');
+    }
+  }, [budget, budgetEditing]);
+
+  async function handleBudgetSave() {
+    const trimmed = budgetInput.trim();
+    if (trimmed === '') {
+      setBudgetSaving(true);
+      await onBudgetSave(account.id, null);
+      setBudgetSaving(false);
+      setBudgetEditing(false);
+      return;
+    }
+    const n = parseFloat(trimmed);
+    if (isNaN(n) || n < 0) return;
+    setBudgetSaving(true);
+    await onBudgetSave(account.id, n);
+    setBudgetSaving(false);
+    setBudgetEditing(false);
+  }
+
+  // Balance inline editor state
+  const [balanceInput, setBalanceInput] = useState(balance != null ? String(balance.usd) : '');
+  const [balanceSaving, setBalanceSaving] = useState(false);
+  const [balanceEditing, setBalanceEditing] = useState(false);
+
+  // Sync input when balance prop changes (e.g. initial load)
+  useEffect(() => {
+    if (!balanceEditing) {
+      setBalanceInput(balance != null ? String(balance.usd) : '');
+    }
+  }, [balance, balanceEditing]);
+
+  async function handleBalanceSave() {
+    const trimmed = balanceInput.trim();
+    if (trimmed === '') {
+      setBalanceSaving(true);
+      await onBalanceSave(account.id, null);
+      setBalanceSaving(false);
+      setBalanceEditing(false);
+      return;
+    }
+    const n = parseFloat(trimmed);
+    if (isNaN(n) || n < 0) return;
+    setBalanceSaving(true);
+    await onBalanceSave(account.id, n);
+    setBalanceSaving(false);
+    setBalanceEditing(false);
+  }
+
+  const costKnown = summary !== null && !summary.error && summary.costError === null;
+  const mtdCost = costKnown && summary ? (monthToDateCost(summary.days) ?? 0) : null;
+
+  // Estimated balance computation
+  const spentSinceSnapshot =
+    costKnown && balance !== null && summary !== null
+      ? (costSinceDate(summary.days, balance.date) ?? 0)
+      : null;
+  const estimatedBalance =
+    balance !== null && spentSinceSnapshot !== null
+      ? balance.usd - spentSinceSnapshot
+      : null;
+  // Color thresholds: red ≤ $1 or negative; amber ≤ 10% of snapshot
+  const balanceIsRed =
+    estimatedBalance !== null && (estimatedBalance <= 1 || estimatedBalance < 0);
+  const balanceIsAmber =
+    estimatedBalance !== null &&
+    !balanceIsRed &&
+    balance !== null &&
+    balance.usd > 0 &&
+    estimatedBalance / balance.usd <= 0.1;
+  const balanceColor = balanceIsRed
+    ? 'var(--error, #ef4444)'
+    : balanceIsAmber
+      ? '#f59e0b'
+      : 'inherit';
+
+  // Period label for display
+  const periodLabel = period === '24h' ? '24h' : period;
+
+  // Determine whether the fetched window covers the whole current month
+  // (for budget) or back to the balance snapshot date (for balance).
+  const earliest = summary ? earliestDay(summary.days) : null;
+  const windowTooShortForBudget =
+    earliest !== null && earliest > currentMonthStart();
+  const windowTooShortForBalance =
+    balance !== null && earliest !== null && earliest > balance.date;
+
+  // Chart caption
+  const chartCaption =
+    period === '24h' ? 'Daily token usage (today)' : `Daily token usage (last ${period})`;
+
   return (
     <div className="card" style={{ marginBottom: 12 }}>
+      {/* Header row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <ProviderBadge provider={account.provider} />
           <span style={{ fontWeight: 600 }}>{account.name}</span>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <PeriodSwitcher value={period} onChange={(p) => onPeriodChange(account.id, p)} />
           <button
             className="btn"
             disabled={loading}
@@ -140,6 +406,7 @@ function AccountCard({ account, summary, loading, onRefresh, onDelete }: Account
         </div>
       </div>
 
+      {/* Usage-level error */}
       {summary?.error && (
         <p style={{ marginTop: 10, fontSize: 12, color: 'var(--error, #ef4444)' }}>
           {summary.error}
@@ -148,6 +415,7 @@ function AccountCard({ account, summary, loading, onRefresh, onDelete }: Account
 
       {summary && !summary.error && (
         <>
+          {/* Token + cost stats grid */}
           <div
             style={{
               display: 'grid',
@@ -158,20 +426,20 @@ function AccountCard({ account, summary, loading, onRefresh, onDelete }: Account
           >
             <div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>
-                Input tokens (uncached, 30d)
+                Input tokens (uncached, {periodLabel})
               </div>
               <div style={{ fontWeight: 700, fontSize: 18 }}>{fmtTokens(summary.totalInput)}</div>
             </div>
             <div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>
-                Output tokens (30d)
+                Output tokens ({periodLabel})
               </div>
               <div style={{ fontWeight: 700, fontSize: 18 }}>{fmtTokens(summary.totalOutput)}</div>
             </div>
             {summary.totalCacheRead > 0 && (
               <div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>
-                  Cache read tokens (30d)
+                  Cache read tokens ({periodLabel})
                 </div>
                 <div style={{ fontWeight: 700, fontSize: 18 }}>
                   {fmtTokens(summary.totalCacheRead)}
@@ -181,7 +449,7 @@ function AccountCard({ account, summary, loading, onRefresh, onDelete }: Account
             {summary.totalCacheCreation > 0 && (
               <div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>
-                  Cache write tokens (30d)
+                  Cache write tokens ({periodLabel})
                 </div>
                 <div style={{ fontWeight: 700, fontSize: 18 }}>
                   {fmtTokens(summary.totalCacheCreation)}
@@ -191,7 +459,7 @@ function AccountCard({ account, summary, loading, onRefresh, onDelete }: Account
             {summary.totalCostUsd !== null && (
               <div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>
-                  Cost (30d)
+                  Cost ({periodLabel})
                 </div>
                 <div style={{ fontWeight: 700, fontSize: 18 }}>
                   {fmtCost(summary.totalCostUsd)}
@@ -208,10 +476,58 @@ function AccountCard({ account, summary, loading, onRefresh, onDelete }: Account
             )}
           </div>
 
+          {/* Cost endpoint error — shown below stats, not as a full-card error */}
+          {summary.costError && (
+            <p style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>
+              Cost unavailable: {summary.costError}
+            </p>
+          )}
+
+          {/* Budget section */}
+          {budget != null && costKnown && mtdCost !== null && !windowTooShortForBudget && (
+            <BudgetBar spent={mtdCost} budget={budget} />
+          )}
+          {budget != null && costKnown && windowTooShortForBudget && (
+            <p style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)' }}>
+              Switch to a longer period to compute this
+            </p>
+          )}
+          {budget != null && !costKnown && (
+            <p style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)' }}>
+              Budget set, but cost data unavailable.
+            </p>
+          )}
+
+          {/* Estimated balance section */}
+          {balance !== null && estimatedBalance !== null && !windowTooShortForBalance && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>
+                Estimated credit balance
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 18, color: balanceColor }}>
+                {estimatedBalance < 0 ? `-${fmtCost(Math.abs(estimatedBalance))}` : fmtCost(estimatedBalance)}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                as of {balance.date} snapshot ({fmtCost(balance.usd)}) minus {fmtCost(spentSinceSnapshot ?? 0)} spent since
+              </div>
+            </div>
+          )}
+          {balance !== null && costKnown && windowTooShortForBalance && (
+            <p style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)' }}>
+              Switch to a longer period to compute this
+            </p>
+          )}
+          {balance !== null && !costKnown && (
+            <p style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)' }}>
+              Balance set, but cost data unavailable.
+            </p>
+          )}
+
+          {/* Daily bar chart */}
           {summary.days.length > 0 && (
             <div style={{ marginTop: 14 }}>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
-                Daily token usage (last 30 days)
+                {chartCaption}
               </div>
               <DailyBarChart days={summary.days} />
             </div>
@@ -224,6 +540,74 @@ function AccountCard({ account, summary, loading, onRefresh, onDelete }: Account
           No admin key stored. Add one below or save the account again with a key.
         </p>
       )}
+
+      {/* Monthly budget editor */}
+      <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border, #3a3a4a)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>Monthly budget (USD):</span>
+        <input
+          type="number"
+          min={0}
+          step={0.01}
+          className="form-input"
+          style={{ width: 90, fontSize: 12, padding: '3px 6px' }}
+          placeholder="none"
+          value={budgetInput}
+          onChange={(e) => { setBudgetInput(e.target.value); setBudgetEditing(true); }}
+          onBlur={() => { if (!budgetEditing) return; }}
+        />
+        <button
+          className="btn btn--primary"
+          style={{ fontSize: 12, padding: '3px 10px' }}
+          disabled={budgetSaving}
+          onClick={handleBudgetSave}
+        >
+          {budgetSaving ? '…' : 'Save'}
+        </button>
+        {budget != null && (
+          <button
+            className="btn"
+            style={{ fontSize: 12, padding: '3px 8px', color: 'var(--text-muted)' }}
+            onClick={() => { setBudgetInput(''); setBudgetEditing(true); void (async () => { setBudgetSaving(true); await onBudgetSave(account.id, null); setBudgetSaving(false); setBudgetEditing(false); })(); }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      {/* Credit balance snapshot editor */}
+      <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>Credit balance (USD):</span>
+        <input
+          type="number"
+          min={0}
+          step={0.01}
+          className="form-input"
+          style={{ width: 90, fontSize: 12, padding: '3px 6px' }}
+          placeholder="none"
+          value={balanceInput}
+          onChange={(e) => { setBalanceInput(e.target.value); setBalanceEditing(true); }}
+        />
+        <button
+          className="btn btn--primary"
+          style={{ fontSize: 12, padding: '3px 10px' }}
+          disabled={balanceSaving}
+          onClick={handleBalanceSave}
+        >
+          {balanceSaving ? '…' : 'Save'}
+        </button>
+        {balance != null && (
+          <button
+            className="btn"
+            style={{ fontSize: 12, padding: '3px 8px', color: 'var(--text-muted)' }}
+            onClick={() => { setBalanceInput(''); setBalanceEditing(true); void (async () => { setBalanceSaving(true); await onBalanceSave(account.id, null); setBalanceSaving(false); setBalanceEditing(false); })(); }}
+          >
+            Clear
+          </button>
+        )}
+        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+          Enter your current credit balance from the provider console — Nexus will subtract API costs from this point.
+        </span>
+      </div>
     </div>
   );
 }
@@ -236,6 +620,9 @@ export function AiUsage() {
   const [accounts, setAccounts] = useState<AiAccount[]>([]);
   const [summaries, setSummaries] = useState<Map<number, AiUsageSummary>>(new Map());
   const [loading, setLoading] = useState<Set<number>>(new Set());
+  const [periods, setPeriods] = useState<Map<number, Period>>(new Map());
+  const [budgets, setBudgets] = useState<Map<number, number>>(new Map());
+  const [balances, setBalances] = useState<Map<number, BalanceSnapshot>>(new Map());
 
   // Mounted guard — prevents setState after unmount
   const mountedRef = useRef(true);
@@ -263,34 +650,103 @@ export function AiUsage() {
     const list = await listAiAccounts();
     if (!mountedRef.current) return;
     setAccounts(list);
+
+    // Load periods, budgets and balances for all accounts
+    const periodMap = new Map<number, Period>();
+    const budgetMap = new Map<number, number>();
+    const balanceMap = new Map<number, BalanceSnapshot>();
+    for (const acct of list) {
+      const rawPeriod = await getSetting(periodSettingKey(acct.id));
+      periodMap.set(acct.id, parsePeriod(rawPeriod));
+
+      const rawBudget = await getSetting(budgetSettingKey(acct.id));
+      if (rawBudget !== null) {
+        const n = parseFloat(rawBudget);
+        if (!isNaN(n)) budgetMap.set(acct.id, n);
+      }
+      const rawBalance = await getSetting(balanceSettingKey(acct.id));
+      const rawBalanceDate = await getSetting(balanceDateSettingKey(acct.id));
+      if (rawBalance !== null && rawBalanceDate !== null) {
+        const n = parseFloat(rawBalance);
+        if (!isNaN(n) && rawBalanceDate.length === 10) {
+          balanceMap.set(acct.id, { usd: n, date: rawBalanceDate });
+        }
+      }
+    }
+    if (mountedRef.current) {
+      setPeriods(periodMap);
+      setBudgets(budgetMap);
+      setBalances(balanceMap);
+    }
+
     // Auto-fetch usage for all accounts that have a stored key
     for (const acct of list) {
       const key = await getSecret(secretKeys.aiAdminKey(acct.id));
-      if (key) void fetchUsageForAccount(acct, key);
+      const p = periodMap.get(acct.id) ?? '30d';
+      if (key) void fetchUsageForAccount(acct, key, PERIOD_DAYS[p]);
     }
   }
 
   // ---------------------------------------------------------------------------
-  // Fetch usage — deduped per account id
+  // Fetch usage — deduped per `${accountId}:${daysBack}`
   // ---------------------------------------------------------------------------
 
-  const fetchUsageForAccount = useCallback(async (acct: AiAccount, adminKey: string) => {
-    // If there is already an in-flight request for this account, reuse it
-    const existing = inFlight.get(acct.id);
-    if (existing) {
-      // Still mark loading so the button shows the right state
+  const fetchUsageForAccount = useCallback(
+    async (acct: AiAccount, adminKey: string, daysBack: number) => {
+      const flightKey = `${acct.id}:${daysBack}`;
+
+      // If there is already an in-flight request for this account+period, reuse it
+      const existing = inFlight.get(flightKey);
+      if (existing) {
+        if (mountedRef.current) {
+          setLoading((prev) => new Set(prev).add(acct.id));
+        }
+        const summary = await existing.catch((e: unknown) => ({
+          days: [] as AiUsageSummary['days'],
+          totalInput: 0,
+          totalOutput: 0,
+          totalCacheRead: 0,
+          totalCacheCreation: 0,
+          totalCostUsd: null as null,
+          costError: null as null,
+          error: String(e),
+        }));
+        if (mountedRef.current) {
+          setSummaries((prev) => new Map(prev).set(acct.id, summary));
+          setLoading((prev) => {
+            const next = new Set(prev);
+            next.delete(acct.id);
+            return next;
+          });
+        }
+        return;
+      }
+
       if (mountedRef.current) {
         setLoading((prev) => new Set(prev).add(acct.id));
       }
-      const summary = await existing.catch((e: unknown) => ({
-        days: [] as AiUsageSummary['days'],
-        totalInput: 0,
-        totalOutput: 0,
-        totalCacheRead: 0,
-        totalCacheCreation: 0,
-        totalCostUsd: null as null,
-        error: String(e),
-      }));
+
+      const promise = fetchAiUsage(acct, adminKey, daysBack);
+      inFlight.set(flightKey, promise);
+
+      let summary: AiUsageSummary;
+      try {
+        summary = await promise;
+      } catch (e) {
+        summary = {
+          days: [],
+          totalInput: 0,
+          totalOutput: 0,
+          totalCacheRead: 0,
+          totalCacheCreation: 0,
+          totalCostUsd: null,
+          costError: null,
+          error: String(e),
+        };
+      } finally {
+        inFlight.delete(flightKey);
+      }
+
       if (mountedRef.current) {
         setSummaries((prev) => new Map(prev).set(acct.id, summary));
         setLoading((prev) => {
@@ -299,47 +755,15 @@ export function AiUsage() {
           return next;
         });
       }
-      return;
-    }
-
-    if (mountedRef.current) {
-      setLoading((prev) => new Set(prev).add(acct.id));
-    }
-
-    const promise = fetchAiUsage(acct, adminKey);
-    inFlight.set(acct.id, promise);
-
-    let summary: AiUsageSummary;
-    try {
-      summary = await promise;
-    } catch (e) {
-      summary = {
-        days: [],
-        totalInput: 0,
-        totalOutput: 0,
-        totalCacheRead: 0,
-        totalCacheCreation: 0,
-        totalCostUsd: null,
-        error: String(e),
-      };
-    } finally {
-      inFlight.delete(acct.id);
-    }
-
-    if (mountedRef.current) {
-      setSummaries((prev) => new Map(prev).set(acct.id, summary));
-      setLoading((prev) => {
-        const next = new Set(prev);
-        next.delete(acct.id);
-        return next;
-      });
-    }
-  }, []);
+    },
+    [],
+  );
 
   async function handleRefresh(id: number) {
     const acct = accounts.find((a) => a.id === id);
     if (!acct) return;
     const key = await getSecret(secretKeys.aiAdminKey(id));
+    const p = periods.get(id) ?? '30d';
     if (!key) {
       if (mountedRef.current) {
         setSummaries((prev) =>
@@ -350,19 +774,85 @@ export function AiUsage() {
             totalCacheRead: 0,
             totalCacheCreation: 0,
             totalCostUsd: null,
+            costError: null,
             error: 'No admin key stored for this account.',
           }),
         );
       }
       return;
     }
-    void fetchUsageForAccount(acct, key);
+    void fetchUsageForAccount(acct, key, PERIOD_DAYS[p]);
   }
 
   async function handleRefreshAll() {
     for (const acct of accounts) {
       const key = await getSecret(secretKeys.aiAdminKey(acct.id));
-      if (key) void fetchUsageForAccount(acct, key);
+      const p = periods.get(acct.id) ?? '30d';
+      if (key) void fetchUsageForAccount(acct, key, PERIOD_DAYS[p]);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Period change
+  // ---------------------------------------------------------------------------
+
+  async function handlePeriodChange(id: number, p: Period) {
+    // Update state immediately
+    setPeriods((prev) => new Map(prev).set(id, p));
+    // Persist
+    await setSetting(periodSettingKey(id), p);
+    // Refetch for this account with the new period
+    const acct = accounts.find((a) => a.id === id);
+    if (!acct) return;
+    const key = await getSecret(secretKeys.aiAdminKey(id));
+    if (key) void fetchUsageForAccount(acct, key, PERIOD_DAYS[p]);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Budget
+  // ---------------------------------------------------------------------------
+
+  async function handleBudgetSave(id: number, value: number | null) {
+    if (value === null) {
+      // Clear: we store empty string as sentinel; getSetting will return '' which parseFloat ignores
+      await setSetting(budgetSettingKey(id), '');
+      if (mountedRef.current) {
+        setBudgets((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+      }
+    } else {
+      await setSetting(budgetSettingKey(id), String(value));
+      if (mountedRef.current) {
+        setBudgets((prev) => new Map(prev).set(id, value));
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Balance
+  // ---------------------------------------------------------------------------
+
+  async function handleBalanceSave(id: number, value: number | null) {
+    if (value === null) {
+      await setSetting(balanceSettingKey(id), '');
+      await setSetting(balanceDateSettingKey(id), '');
+      if (mountedRef.current) {
+        setBalances((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+      }
+    } else {
+      const date = todayStr();
+      await setSetting(balanceSettingKey(id), String(value));
+      await setSetting(balanceDateSettingKey(id), date);
+      if (mountedRef.current) {
+        setBalances((prev) => new Map(prev).set(id, { usd: value, date }));
+      }
     }
   }
 
@@ -375,10 +865,33 @@ export function AiUsage() {
     await deleteSecret(secretKeys.aiAdminKey(id)).catch(() => {
       // key may not exist — ignore
     });
-    inFlight.delete(id);
+    // Clear budget, balance, and period settings
+    await setSetting(budgetSettingKey(id), '').catch(() => undefined);
+    await setSetting(balanceSettingKey(id), '').catch(() => undefined);
+    await setSetting(balanceDateSettingKey(id), '').catch(() => undefined);
+    await setSetting(periodSettingKey(id), '').catch(() => undefined);
+    // Clear any in-flight promises for this account (all periods)
+    for (const p of PERIOD_LABELS) {
+      inFlight.delete(`${id}:${PERIOD_DAYS[p]}`);
+    }
     if (mountedRef.current) {
       setAccounts((prev) => prev.filter((a) => a.id !== id));
       setSummaries((prev) => {
+        const next = new Map(prev);
+        next.delete(id);
+        return next;
+      });
+      setBudgets((prev) => {
+        const next = new Map(prev);
+        next.delete(id);
+        return next;
+      });
+      setBalances((prev) => {
+        const next = new Map(prev);
+        next.delete(id);
+        return next;
+      });
+      setPeriods((prev) => {
         const next = new Map(prev);
         next.delete(id);
         return next;
@@ -407,12 +920,13 @@ export function AiUsage() {
       await setSecret(secretKeys.aiAdminKey(acct.id), formKey.trim());
       if (mountedRef.current) {
         setAccounts((prev) => [...prev, acct]);
+        setPeriods((prev) => new Map(prev).set(acct.id, '30d'));
         setFormName('');
         setFormKey('');
         setFormProvider('anthropic');
       }
-      // Auto-fetch usage right away
-      void fetchUsageForAccount(acct, formKey.trim());
+      // Auto-fetch usage right away with default period
+      void fetchUsageForAccount(acct, formKey.trim(), PERIOD_DAYS['30d']);
     } catch (err) {
       if (mountedRef.current) setFormError(String(err));
     } finally {
@@ -451,8 +965,14 @@ export function AiUsage() {
               account={acct}
               summary={summaries.get(acct.id) ?? null}
               loading={loading.has(acct.id)}
+              period={periods.get(acct.id) ?? '30d'}
+              budget={budgets.get(acct.id) ?? null}
+              balance={balances.get(acct.id) ?? null}
               onRefresh={handleRefresh}
               onDelete={handleDelete}
+              onPeriodChange={handlePeriodChange}
+              onBudgetSave={handleBudgetSave}
+              onBalanceSave={handleBalanceSave}
             />
           ))}
         </div>

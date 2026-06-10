@@ -39,12 +39,12 @@ export async function checkHealth(p: Project): Promise<HealthCheckResult> {
   const start = performance.now();
   try {
     const response = await httpRequest({ method: 'GET', url, headers, timeoutMs: 10000 });
-    const latencyMs = performance.now() - start;
+    const latencyMs = Math.round(performance.now() - start);
     const { components, meta } = parseHealthBody(response.body);
     const health = classify(response.ok, response.status, latencyMs, meta, components);
     return { health, latencyMs, httpStatus: response.status, error: null, components, meta };
   } catch (e: unknown) {
-    const latencyMs = performance.now() - start;
+    const latencyMs = Math.round(performance.now() - start);
     const msg = e instanceof Error ? e.message : String(e);
     return { health: 'critical', latencyMs, httpStatus: null, error: msg, components: [], meta: null };
   }

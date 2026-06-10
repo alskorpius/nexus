@@ -141,10 +141,26 @@ fn ssl_check_blocking(host: &str, port: u16) -> SslCheckResult {
     };
 
     // Build a TLS client config that skips certificate verification (metadata-only read).
-    let config = ClientConfig::builder()
-        .dangerous()
-        .with_custom_certificate_verifier(Arc::new(NoVerifier))
-        .with_no_client_auth();
+    // The crypto provider is selected explicitly: the process also links aws-lc-rs
+    // (via other rustls users), so relying on the process default would panic.
+    let provider = Arc::new(rustls::crypto::ring::default_provider());
+    let config = match ClientConfig::builder_with_provider(provider)
+        .with_safe_default_protocol_versions()
+    {
+        Ok(builder) => builder
+            .dangerous()
+            .with_custom_certificate_verifier(Arc::new(NoVerifier))
+            .with_no_client_auth(),
+        Err(e) => {
+            return SslCheckResult {
+                host: host.to_string(),
+                expires_at: None,
+                days_left: None,
+                issuer: None,
+                error: Some(format!("TLS config failed: {e}")),
+            };
+        }
+    };
 
     let server_name = match ServerName::try_from(host.to_string()) {
         Ok(n) => n,
