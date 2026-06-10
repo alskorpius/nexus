@@ -1,3 +1,4 @@
+import type { Lang } from '../lib/i18n';
 import { common } from './dict/common';
 import { dashboard } from './dict/dashboard';
 import { projects } from './dict/projects';
@@ -6,10 +7,14 @@ import { tickets } from './dict/tickets';
 import { ai } from './dict/ai';
 import { settings } from './dict/settings';
 
-// Each namespace file exports { en, uk } with identical keys (type-checked in
-// the dict file). Keys are flattened here to '{namespace}.{key}'.
+// Each namespace file exports per-language key maps with identical keys
+// (type-checked in the dict file). `en` is mandatory; other languages are
+// optional per namespace — t() falls back to English for missing ones.
+// Keys are flattened here to '{namespace}.{key}'.
 
-const NAMESPACES: Record<string, { en: Record<string, string>; uk: Record<string, string> }> = {
+type NamespaceDict = { en: Record<string, string> } & Partial<Record<Lang, Record<string, string>>>;
+
+const NAMESPACES: Record<string, NamespaceDict> = {
   common,
   dashboard,
   projects,
@@ -19,11 +24,17 @@ const NAMESPACES: Record<string, { en: Record<string, string>; uk: Record<string
   settings,
 };
 
-export const MESSAGES: Record<'en' | 'uk', Record<string, string>> = { en: {}, uk: {} };
+const ALL_LANGS: Lang[] = ['en', 'uk', 'es', 'de', 'fr', 'pt', 'zh', 'ar'];
+
+export const MESSAGES: Record<Lang, Record<string, string>> = {
+  en: {}, uk: {}, es: {}, de: {}, fr: {}, pt: {}, zh: {}, ar: {},
+};
 
 for (const [ns, dict] of Object.entries(NAMESPACES)) {
-  for (const lang of ['en', 'uk'] as const) {
-    for (const [key, value] of Object.entries(dict[lang])) {
+  for (const lang of ALL_LANGS) {
+    const entries = dict[lang];
+    if (!entries) continue;
+    for (const [key, value] of Object.entries(entries)) {
       MESSAGES[lang][`${ns}.${key}`] = value;
     }
   }

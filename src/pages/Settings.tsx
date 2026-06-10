@@ -9,6 +9,7 @@ import {
 } from '../lib/theme';
 import type { BrandingState, ThemeId } from '../lib/theme';
 import { LANGUAGES, saveLanguage, useI18n } from '../lib/i18n';
+import type { Lang } from '../lib/i18n';
 
 // ── Workspace card ───────────────────────────────────────────────────────────
 
@@ -193,18 +194,18 @@ function WorkspaceCard() {
       {/* Language picker */}
       <div className="form-field">
         <label className="form-label">{t('settings.language.label')}</label>
-        <div className="settings-input-row">
+        <select
+          className="form-input"
+          style={{ maxWidth: '260px' }}
+          value={lang}
+          onChange={e => saveLanguage(e.target.value as Lang)}
+        >
           {LANGUAGES.map(option => (
-            <button
-              key={option.id}
-              type="button"
-              className={`btn btn--sm ${lang === option.id ? 'btn--primary' : 'btn--ghost'}`}
-              onClick={() => saveLanguage(option.id)}
-            >
+            <option key={option.id} value={option.id}>
               {option.label}
-            </button>
+            </option>
           ))}
-        </div>
+        </select>
         <p className="form-hint form-hint--block">{t('settings.language.hint')}</p>
       </div>
     </div>
