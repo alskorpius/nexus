@@ -28,3 +28,5 @@ tokio = { version = "1", features = ["net", "time", "rt", "macros"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "logging", "std", "tls12"] }
 x509-parser = "0.16"
 tauri-plugin-notification = "2.3.3"
+tauri-plugin-updater = "2.10.1"
+tauri-plugin-process = "2.3.1"

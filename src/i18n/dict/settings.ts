@@ -82,6 +82,18 @@ const en = {
   'about.version.label': 'Version',
   'about.arch.label': 'Architecture',
   'about.arch.value': 'Tauri 2 · React 19 · local-first',
+
+  // Updates (in About card)
+  'updates.label': 'Updates',
+  'updates.check': 'Check for updates',
+  'updates.checking': 'Checking…',
+  'updates.none': 'You are on the latest version.',
+  'updates.available': 'Version {version} is available.',
+  'updates.install': 'Download and install',
+  'updates.downloading': 'Downloading… {pct}%',
+  'updates.restart': 'Restart now',
+  'updates.ready': 'Update installed. Restart Nexus to apply it.',
+  'updates.error': 'Update failed:',
 };
 
 const uk: Record<keyof typeof en, string> = {
@@ -161,6 +173,17 @@ const uk: Record<keyof typeof en, string> = {
   'about.version.label': 'Версія',
   'about.arch.label': 'Архітектура',
   'about.arch.value': 'Tauri 2 · React 19 · local-first',
+
+  'updates.label': 'Оновлення',
+  'updates.check': 'Перевірити оновлення',
+  'updates.checking': 'Перевірка…',
+  'updates.none': 'У вас остання версія.',
+  'updates.available': 'Доступна версія {version}.',
+  'updates.install': 'Завантажити та встановити',
+  'updates.downloading': 'Завантаження… {pct}%',
+  'updates.restart': 'Перезапустити зараз',
+  'updates.ready': 'Оновлення встановлено. Перезапустіть Nexus, щоб застосувати його.',
+  'updates.error': 'Помилка оновлення:',
 };
 
 const es: Record<keyof typeof en, string> = {
@@ -240,6 +263,17 @@ const es: Record<keyof typeof en, string> = {
   'about.version.label': 'Versión',
   'about.arch.label': 'Arquitectura',
   'about.arch.value': 'Tauri 2 · React 19 · local-first',
+
+  'updates.label': 'Actualizaciones',
+  'updates.check': 'Buscar actualizaciones',
+  'updates.checking': 'Comprobando…',
+  'updates.none': 'Tienes la última versión.',
+  'updates.available': 'La versión {version} está disponible.',
+  'updates.install': 'Descargar e instalar',
+  'updates.downloading': 'Descargando… {pct}%',
+  'updates.restart': 'Reiniciar ahora',
+  'updates.ready': 'Actualización instalada. Reinicia Nexus para aplicarla.',
+  'updates.error': 'Error de actualización:',
 };
 
 const de: Record<keyof typeof en, string> = {
@@ -319,6 +353,17 @@ const de: Record<keyof typeof en, string> = {
   'about.version.label': 'Version',
   'about.arch.label': 'Architektur',
   'about.arch.value': 'Tauri 2 · React 19 · local-first',
+
+  'updates.label': 'Updates',
+  'updates.check': 'Nach Updates suchen',
+  'updates.checking': 'Prüfung läuft…',
+  'updates.none': 'Sie verwenden die neueste Version.',
+  'updates.available': 'Version {version} ist verfügbar.',
+  'updates.install': 'Herunterladen und installieren',
+  'updates.downloading': 'Wird heruntergeladen… {pct}%',
+  'updates.restart': 'Jetzt neu starten',
+  'updates.ready': 'Update installiert. Starten Sie Nexus neu, um es zu übernehmen.',
+  'updates.error': 'Update fehlgeschlagen:',
 };
 
 const fr: Record<keyof typeof en, string> = {
@@ -398,6 +443,17 @@ const fr: Record<keyof typeof en, string> = {
   'about.version.label': 'Version',
   'about.arch.label': 'Architecture',
   'about.arch.value': 'Tauri 2 · React 19 · local-first',
+
+  'updates.label': 'Mises à jour',
+  'updates.check': 'Rechercher des mises à jour',
+  'updates.checking': 'Vérification…',
+  'updates.none': 'Vous disposez de la dernière version.',
+  'updates.available': 'La version {version} est disponible.',
+  'updates.install': 'Télécharger et installer',
+  'updates.downloading': 'Téléchargement… {pct}%',
+  'updates.restart': 'Redémarrer maintenant',
+  'updates.ready': "Mise à jour installée. Redémarrez Nexus pour l'appliquer.",
+  'updates.error': 'Échec de la mise à jour :',
 };
 
 const pt: Record<keyof typeof en, string> = {
@@ -477,6 +533,17 @@ const pt: Record<keyof typeof en, string> = {
   'about.version.label': 'Versão',
   'about.arch.label': 'Arquitetura',
   'about.arch.value': 'Tauri 2 · React 19 · local-first',
+
+  'updates.label': 'Atualizações',
+  'updates.check': 'Verificar atualizações',
+  'updates.checking': 'Verificando…',
+  'updates.none': 'Você está na versão mais recente.',
+  'updates.available': 'A versão {version} está disponível.',
+  'updates.install': 'Baixar e instalar',
+  'updates.downloading': 'Baixando… {pct}%',
+  'updates.restart': 'Reiniciar agora',
+  'updates.ready': 'Atualização instalada. Reinicie o Nexus para aplicá-la.',
+  'updates.error': 'Falha na atualização:',
 };
 
 const zh: Record<keyof typeof en, string> = {
@@ -556,6 +623,17 @@ const zh: Record<keyof typeof en, string> = {
   'about.version.label': '版本',
   'about.arch.label': '架构',
   'about.arch.value': 'Tauri 2 · React 19 · local-first',
+
+  'updates.label': '更新',
+  'updates.check': '检查更新',
+  'updates.checking': '正在检查…',
+  'updates.none': '当前已是最新版本。',
+  'updates.available': '新版本 {version} 可用。',
+  'updates.install': '下载并安装',
+  'updates.downloading': '正在下载… {pct}%',
+  'updates.restart': '立即重启',
+  'updates.ready': '更新已安装。重启 Nexus 以应用更新。',
+  'updates.error': '更新失败：',
 };
 
 const ar: Record<keyof typeof en, string> = {
@@ -635,6 +713,17 @@ const ar: Record<keyof typeof en, string> = {
   'about.version.label': 'الإصدار',
   'about.arch.label': 'البنية',
   'about.arch.value': 'Tauri 2 · React 19 · local-first',
+
+  'updates.label': 'التحديثات',
+  'updates.check': 'التحقق من وجود تحديثات',
+  'updates.checking': 'جارٍ التحقق…',
+  'updates.none': 'أنت تستخدم أحدث إصدار.',
+  'updates.available': 'الإصدار {version} متاح.',
+  'updates.install': 'تنزيل وتثبيت',
+  'updates.downloading': 'جارٍ التنزيل… {pct}%',
+  'updates.restart': 'إعادة التشغيل الآن',
+  'updates.ready': 'تم تثبيت التحديث. أعد تشغيل Nexus لتطبيقه.',
+  'updates.error': 'فشل التحديث:',
 };
 
 export const settings = { en, uk, es, de, fr, pt, zh, ar };

@@ -73,6 +73,10 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signs updater artifacts (createUpdaterArtifacts). Set in repo settings:
+          # Settings -> Secrets and variables -> Actions.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Nexus ${{ github.ref_name }}'
@@ -84,4 +88,5 @@ jobs:
             > On macOS, Gatekeeper may block the app — right-click → Open, or run `xattr -cr /Applications/Nexus.app`.
           releaseDraft: true
           prerelease: false
+          updaterJsonPreferNsis: true
           args: ${{ matrix.args }}

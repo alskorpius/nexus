@@ -1,4 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import { getVersion } from '@tauri-apps/api/app';
+import { check } from '@tauri-apps/plugin-updater';
+import type { Update } from '@tauri-apps/plugin-updater';
+import { relaunch } from '@tauri-apps/plugin-process';
 import { useStore } from '../state/store';
 import {
   THEME_PRESETS,
@@ -213,6 +217,122 @@ function WorkspaceCard() {
   );
 }
 
+// ── About card (version + updates) ───────────────────────────────────────────
+
+type UpdatePhase = 'idle' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error';
+
+function AboutCard() {
+  const { t } = useI18n();
+  const [version, setVersion] = useState('');
+  const [phase, setPhase] = useState<UpdatePhase>('idle');
+  const [pct, setPct] = useState(0);
+  const [newVersion, setNewVersion] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+  const updateRef = useRef<Update | null>(null);
+
+  useEffect(() => {
+    getVersion().then(setVersion).catch(() => {});
+  }, []);
+
+  async function handleCheck() {
+    setPhase('checking');
+    setErrorMsg('');
+    try {
+      const update = await check();
+      if (update) {
+        updateRef.current = update;
+        setNewVersion(update.version);
+        setPhase('available');
+      } else {
+        setPhase('none');
+      }
+    } catch (e) {
+      setErrorMsg(String(e));
+      setPhase('error');
+    }
+  }
+
+  async function handleInstall() {
+    const update = updateRef.current;
+    if (!update) return;
+    setPhase('downloading');
+    setPct(0);
+    try {
+      let total = 0;
+      let received = 0;
+      await update.downloadAndInstall(event => {
+        if (event.event === 'Started') {
+          total = event.data.contentLength ?? 0;
+        } else if (event.event === 'Progress') {
+          received += event.data.chunkLength;
+          if (total > 0) setPct(Math.min(100, Math.round((received / total) * 100)));
+        } else if (event.event === 'Finished') {
+          setPct(100);
+        }
+      });
+      setPhase('ready');
+    } catch (e) {
+      setErrorMsg(String(e));
+      setPhase('error');
+    }
+  }
+
+  return (
+    <div className="card settings-card">
+      <h2 className="settings-card__title">{t('settings.about.title')}</h2>
+      <div className="settings-info-list">
+        <div className="settings-info-item">
+          <span className="settings-info-item__label">{t('settings.about.version.label')}</span>
+          <span className="settings-info-item__value">{version || '…'}</span>
+        </div>
+        <div className="settings-info-item">
+          <span className="settings-info-item__label">{t('settings.about.arch.label')}</span>
+          <span className="settings-info-item__value">
+            {t('settings.about.arch.value')}
+          </span>
+        </div>
+        <div className="settings-info-item">
+          <span className="settings-info-item__label">{t('settings.updates.label')}</span>
+          <span className="settings-info-item__value">
+            <span style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {phase === 'available' ? (
+                <>
+                  {t('settings.updates.available', { version: newVersion })}
+                  <button type="button" className="btn btn--primary btn--sm" onClick={handleInstall}>
+                    {t('settings.updates.install')}
+                  </button>
+                </>
+              ) : phase === 'downloading' ? (
+                t('settings.updates.downloading', { pct: String(pct) })
+              ) : phase === 'ready' ? (
+                <>
+                  {t('settings.updates.ready')}
+                  <button type="button" className="btn btn--primary btn--sm" onClick={() => relaunch()}>
+                    {t('settings.updates.restart')}
+                  </button>
+                </>
+              ) : (
+                <>
+                  {phase === 'none' && t('settings.updates.none')}
+                  {phase === 'error' && `${t('settings.updates.error')} ${errorMsg}`}
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--sm"
+                    onClick={handleCheck}
+                    disabled={phase === 'checking'}
+                  >
+                    {phase === 'checking' ? t('settings.updates.checking') : t('settings.updates.check')}
+                  </button>
+                </>
+              )}
+            </span>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Settings page ───────────────────────────────────────────────────────
 
 export function Settings() {
@@ -307,22 +427,8 @@ export function Settings() {
           </div>
         </div>
 
-        {/* About */}
-        <div className="card settings-card">
-          <h2 className="settings-card__title">{t('settings.about.title')}</h2>
-          <div className="settings-info-list">
-            <div className="settings-info-item">
-              <span className="settings-info-item__label">{t('settings.about.version.label')}</span>
-              <span className="settings-info-item__value">0.1.0</span>
-            </div>
-            <div className="settings-info-item">
-              <span className="settings-info-item__label">{t('settings.about.arch.label')}</span>
-              <span className="settings-info-item__value">
-                {t('settings.about.arch.value')}
-              </span>
-            </div>
-          </div>
-        </div>
+        {/* About + updates */}
+        <AboutCard />
       </div>
     </div>
   );
