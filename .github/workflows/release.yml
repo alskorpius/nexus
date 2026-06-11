@@ -23,8 +23,43 @@ jobs:
             exit 1
           fi
 
-  build:
+  # The draft release is created ONCE here. Creating it from the build matrix
+  # races: all jobs check for an existing draft at the same moment, find none,
+  # and each creates its own — assets end up split across duplicate drafts.
+  create-release:
     needs: check-version
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create.outputs.result }}
+    steps:
+      - name: Create draft release
+        id: create
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = context.ref.replace('refs/tags/', '');
+            const body = [
+              'See the assets below to download and install this version.',
+              '',
+              '> **Note**: installers are currently unsigned.',
+              '> On Windows, SmartScreen will warn about an unknown publisher — choose "More info" → "Run anyway".',
+              '> On macOS, Gatekeeper may block the app — right-click → Open, or run `xattr -cr /Applications/Nexus.app`.',
+            ].join('\n');
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tag,
+              name: `Nexus ${tag}`,
+              body,
+              draft: true,
+              prerelease: false,
+            });
+            return data.id;
+
+  build:
+    needs: create-release
     permissions:
       contents: write
     strategy:
@@ -78,15 +113,6 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Nexus ${{ github.ref_name }}'
-          releaseBody: |
-            See the assets below to download and install this version.
-
-            > **Note**: installers are currently unsigned.
-            > On Windows, SmartScreen will warn about an unknown publisher — choose "More info" → "Run anyway".
-            > On macOS, Gatekeeper may block the app — right-click → Open, or run `xattr -cr /Applications/Nexus.app`.
-          releaseDraft: true
-          prerelease: false
+          releaseId: ${{ needs.create-release.outputs.release_id }}
           updaterJsonPreferNsis: true
           args: ${{ matrix.args }}
