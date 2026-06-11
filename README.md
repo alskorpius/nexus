@@ -64,4 +64,4 @@ See [docs/MCP-SERVER.md](docs/MCP-SERVER.md) for full setup, Claude Code config,
 
 ## License
 
-TBD
+[MIT](LICENSE)

@@ -3,6 +3,7 @@ name = "nexus"
 version = "0.1.2"
 description = "Nexus — Local-First Project Control Center"
 authors = ["Rafiq Technologies"]
+license = "MIT"
 edition = "2021"
 
 [lib]
