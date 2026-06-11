@@ -94,6 +94,17 @@ const en = {
   'history.unit.m': 'm',
   'history.unit.h': 'h',
   'history.unit.d': 'd',
+
+  // Section: AI Handover
+  'handover.button': 'AI Context',
+  'handover.title': 'AI Handover Document',
+  'handover.hint': 'Generated in English for AI coding assistants — paste it into a Claude Code or Codex session to prime it with this project’s context.',
+  'handover.copy': 'Copy',
+  'handover.copied': 'Copied',
+  'handover.save': 'Save .md',
+  'handover.savedTo': 'Saved to:',
+  'handover.generating': 'Generating…',
+  'handover.error': 'Failed:',
 };
 
 const uk: Record<keyof typeof en, string> = {
@@ -177,6 +188,17 @@ const uk: Record<keyof typeof en, string> = {
   'history.unit.m': 'хв',
   'history.unit.h': 'год',
   'history.unit.d': 'д',
+
+  // Section: AI Handover
+  'handover.button': 'Контекст для AI',
+  'handover.title': 'Handover-документ для AI',
+  'handover.hint': 'Генерується англійською для AI-асистентів — вставте в сесію Claude Code чи Codex, щоб передати контекст проєкту.',
+  'handover.copy': 'Копіювати',
+  'handover.copied': 'Скопійовано',
+  'handover.save': 'Зберегти .md',
+  'handover.savedTo': 'Збережено до:',
+  'handover.generating': 'Генерація…',
+  'handover.error': 'Помилка:',
 };
 
 const es: Record<keyof typeof en, string> = {
@@ -273,6 +295,17 @@ const es: Record<keyof typeof en, string> = {
   'history.unit.m': 'm',
   'history.unit.h': 'h',
   'history.unit.d': 'd',
+
+  // Section: AI Handover
+  'handover.button': 'Contexto para IA',
+  'handover.title': 'Documento de traspaso para IA',
+  'handover.hint': 'Se genera en inglés para asistentes de codificación con IA: pégalo en una sesión de Claude Code o Codex para darle el contexto del proyecto.',
+  'handover.copy': 'Copiar',
+  'handover.copied': 'Copiado',
+  'handover.save': 'Guardar .md',
+  'handover.savedTo': 'Guardado en:',
+  'handover.generating': 'Generando…',
+  'handover.error': 'Error:',
 };
 
 const de: Record<keyof typeof en, string> = {
@@ -369,6 +402,17 @@ const de: Record<keyof typeof en, string> = {
   'history.unit.m': 'Min',
   'history.unit.h': 'Std',
   'history.unit.d': 'T',
+
+  // Section: AI Handover
+  'handover.button': 'KI-Kontext',
+  'handover.title': 'KI-Übergabedokument',
+  'handover.hint': 'Wird auf Englisch für KI-Coding-Assistenten generiert — fügen Sie es in eine Claude-Code- oder Codex-Sitzung ein, um den Projektkontext zu übergeben.',
+  'handover.copy': 'Kopieren',
+  'handover.copied': 'Kopiert',
+  'handover.save': 'Als .md speichern',
+  'handover.savedTo': 'Gespeichert unter:',
+  'handover.generating': 'Wird generiert…',
+  'handover.error': 'Fehlgeschlagen:',
 };
 
 const fr: Record<keyof typeof en, string> = {
@@ -465,6 +509,17 @@ const fr: Record<keyof typeof en, string> = {
   'history.unit.m': 'min',
   'history.unit.h': 'h',
   'history.unit.d': 'j',
+
+  // Section: AI Handover
+  'handover.button': 'Contexte IA',
+  'handover.title': "Document de passation pour l'IA",
+  'handover.hint': "Généré en anglais pour les assistants de codage IA — collez-le dans une session Claude Code ou Codex pour lui transmettre le contexte du projet.",
+  'handover.copy': 'Copier',
+  'handover.copied': 'Copié',
+  'handover.save': 'Enregistrer .md',
+  'handover.savedTo': 'Enregistré dans :',
+  'handover.generating': 'Génération…',
+  'handover.error': 'Échec :',
 };
 
 const pt: Record<keyof typeof en, string> = {
@@ -561,6 +616,17 @@ const pt: Record<keyof typeof en, string> = {
   'history.unit.m': 'min',
   'history.unit.h': 'h',
   'history.unit.d': 'd',
+
+  // Section: AI Handover
+  'handover.button': 'Contexto para IA',
+  'handover.title': 'Documento de handover para IA',
+  'handover.hint': 'Gerado em inglês para assistentes de codificação com IA — cole em uma sessão do Claude Code ou Codex para passar o contexto do projeto.',
+  'handover.copy': 'Copiar',
+  'handover.copied': 'Copiado',
+  'handover.save': 'Salvar .md',
+  'handover.savedTo': 'Salvo em:',
+  'handover.generating': 'Gerando…',
+  'handover.error': 'Falha:',
 };
 
 const zh: Record<keyof typeof en, string> = {
@@ -657,6 +723,17 @@ const zh: Record<keyof typeof en, string> = {
   'history.unit.m': '分',
   'history.unit.h': '时',
   'history.unit.d': '天',
+
+  // Section: AI Handover
+  'handover.button': 'AI 上下文',
+  'handover.title': 'AI 交接文档',
+  'handover.hint': '以英文生成，供 AI 编程助手使用——粘贴到 Claude Code 或 Codex 会话中即可传递项目上下文。',
+  'handover.copy': '复制',
+  'handover.copied': '已复制',
+  'handover.save': '保存 .md',
+  'handover.savedTo': '已保存到:',
+  'handover.generating': '生成中…',
+  'handover.error': '失败:',
 };
 
 const ar: Record<keyof typeof en, string> = {
@@ -753,6 +830,17 @@ const ar: Record<keyof typeof en, string> = {
   'history.unit.m': 'د',
   'history.unit.h': 'س',
   'history.unit.d': 'أ',
+
+  // Section: AI Handover
+  'handover.button': 'سياق AI',
+  'handover.title': 'مستند تسليم لـ AI',
+  'handover.hint': 'يُنشأ بالإنجليزية لمساعدي البرمجة بالذكاء الاصطناعي — الصقه في جلسة Claude Code أو Codex لنقل سياق المشروع.',
+  'handover.copy': 'نسخ',
+  'handover.copied': 'تم النسخ',
+  'handover.save': 'حفظ ‎.md',
+  'handover.savedTo': 'حُفظ في:',
+  'handover.generating': 'جارٍ الإنشاء…',
+  'handover.error': 'فشل:',
 };
 
 export const detail = { en, uk, es, de, fr, pt, zh, ar };

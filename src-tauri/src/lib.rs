@@ -222,6 +222,15 @@ fn import_bundle(path: String, passphrase: String) -> Result<String, String> {
         .map_err(|e| format!("invalid UTF-8 in decrypted bundle: {e}"))
 }
 
+// ── 3b. Plain text file export (handover docs) ───────────────────────────────
+
+/// Unrestricted write — the `path` MUST originate from a native save dialog
+/// (user-chosen), never from remote or computed input.
+#[tauri::command]
+fn save_text_file(path: String, contents: String) -> Result<(), String> {
+    std::fs::write(&path, contents).map_err(|e| e.to_string())
+}
+
 // ── 4. App entry point ────────────────────────────────────────────────────────
 
 const DB_MIGRATION_SQL: &str = "
@@ -347,6 +356,7 @@ pub fn run() {
             http_request,
             export_bundle,
             import_bundle,
+            save_text_file,
             ssl::ssl_check,
         ])
         .run(tauri::generate_context!())

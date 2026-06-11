@@ -7,6 +7,7 @@ import { TicketTable } from '../components/TicketTable';
 import { ProjectForm } from '../components/ProjectForm';
 import { PassphraseModal } from '../components/PassphraseModal';
 import { HealthHistoryCard } from '../components/HealthHistoryCard';
+import { HandoverModal } from '../components/HandoverModal';
 import { timeAgo } from '../lib/format';
 import { computeHealthScore } from '../lib/score';
 import { useI18n, getLocale } from '../lib/i18n';
@@ -38,6 +39,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const [showEdit, setShowEdit] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [showHandover, setShowHandover] = useState(false);
   const [exportResult, setExportResult] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
 
@@ -124,6 +126,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               {t('detail.action.refresh')}
             </button>
             <button className="btn btn--ghost" onClick={() => setShowEdit(true)}>{t('detail.action.edit')}</button>
+            <button className="btn btn--ghost" onClick={() => setShowHandover(true)}>{t('detail.handover.button')}</button>
             <button className="btn btn--ghost" onClick={() => setShowExport(true)}>{t('detail.action.export')}</button>
             <button className="btn btn--danger" onClick={() => setShowDelete(true)}>{t('detail.action.delete')}</button>
           </div>
@@ -453,6 +456,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       {/* Modals */}
       {showEdit && (
         <ProjectForm project={project} onClose={() => setShowEdit(false)} />
+      )}
+      {showHandover && (
+        <HandoverModal
+          project={project}
+          status={status}
+          onClose={() => setShowHandover(false)}
+        />
       )}
       {showExport && (
         <PassphraseModal
