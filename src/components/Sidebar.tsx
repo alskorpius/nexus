@@ -14,6 +14,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { page: 'dashboard', labelKey: 'dashboard.nav.dashboard', icon: '⬡' },
   { page: 'projects',  labelKey: 'dashboard.nav.projects',  icon: '⊞' },
+  { page: 'digest',    labelKey: 'dashboard.nav.digest',    icon: '≣' },
   { page: 'ai',        labelKey: 'dashboard.nav.ai',        icon: '◎' },
   { page: 'settings',  labelKey: 'dashboard.nav.settings',  icon: '⚙' },
 ];

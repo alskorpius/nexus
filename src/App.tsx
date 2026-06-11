@@ -6,6 +6,7 @@ import { Projects } from './pages/Projects';
 import { ProjectDetail } from './pages/ProjectDetail';
 import { Settings } from './pages/Settings';
 import { AiUsage } from './pages/AiUsage';
+import { Digest } from './pages/Digest';
 import { loadBranding } from './lib/theme';
 import { loadLanguage, useI18n } from './lib/i18n';
 
@@ -50,6 +51,7 @@ function AppContent() {
         )}
         {nav.page === 'settings' && <Settings />}
         {nav.page === 'ai' && <AiUsage />}
+        {nav.page === 'digest' && <Digest />}
       </main>
     </div>
   );

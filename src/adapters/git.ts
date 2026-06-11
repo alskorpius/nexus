@@ -29,7 +29,19 @@ function gitlabHostFromUrl(repoUrl: string): string {
   return 'https://gitlab.com';
 }
 
-function hintForStatus(status: number, provider: string): string {
+function hintForStatus(
+  status: number,
+  provider: string,
+  headers?: Record<string, string>,
+): string {
+  // GitHub signals rate limiting as 403/429 with X-RateLimit-Remaining: 0 —
+  // a different problem than token permissions (60 req/h unauthenticated).
+  if (
+    (status === 403 || status === 429) &&
+    headers?.['x-ratelimit-remaining'] === '0'
+  ) {
+    return `${provider} rate limit reached — add a token in project settings to raise the limit`;
+  }
   if (status === 401 || status === 403) {
     return `${provider} ${status} — check token permissions`;
   }
@@ -309,6 +321,296 @@ async function fetchGitlab(
   }
 
   return { openMrCount, mrs, commits, branches, failedPipelines };
+}
+
+// ---------------------------------------------------------------------------
+// Multi-repo digest (period summary; fetched on demand, not in the poll loop)
+// ---------------------------------------------------------------------------
+
+export interface GitDigestAuthor {
+  name: string;
+  commits: number;
+}
+
+export interface GitDigest {
+  projectId: number;
+  projectName: string;
+  provider: 'github' | 'gitlab';
+  commitCount: number;
+  /** True when the commit list hit the API page cap (count is a lower bound). */
+  commitsTruncated: boolean;
+  /** Top contributors by commit count (max 3). */
+  authors: GitDigestAuthor[];
+  mergedMrCount: number;
+  /** True when the merged list hit the API page cap (count is a lower bound). */
+  mergedTruncated: boolean;
+  openMrCount: number;
+  /** Failed pipelines / workflow runs in the period; null when unavailable. */
+  failedPipelineCount: number | null;
+  /** Up to 5 most recent commits in the period. */
+  recentCommits: GitCommit[];
+  /** Up to 5 most recently merged MRs/PRs in the period. */
+  mergedMrs: GitMr[];
+}
+
+const DIGEST_PAGE_SIZE = 100;
+
+function topAuthors(commits: { author: string }[]): GitDigestAuthor[] {
+  const counts = new Map<string, number>();
+  for (const c of commits) {
+    counts.set(c.author, (counts.get(c.author) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([name, n]) => ({ name, commits: n }))
+    .sort((a, b) => b.commits - a.commits)
+    .slice(0, 3);
+}
+
+interface GithubMergedPrRaw {
+  title: string;
+  html_url: string;
+  updated_at: string;
+  merged_at: string | null;
+  user?: { login?: string };
+}
+
+interface GithubRunsRaw {
+  workflow_runs?: Array<{ conclusion: string | null }>;
+}
+
+async function fetchGithubDigest(
+  slug: string,
+  token: string | null,
+  sinceIso: string,
+): Promise<Omit<GitDigest, 'projectId' | 'projectName' | 'provider'>> {
+  const base = 'https://api.github.com';
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  // Note: the commits endpoint covers the DEFAULT BRANCH only (no `sha`
+  // param) — feature-branch activity is not counted. Deliberate tradeoff to
+  // keep the digest at 4 requests per project.
+  const [commitsR, mergedR, openR, runsR] = await Promise.allSettled([
+    httpRequest({
+      method: 'GET',
+      url: `${base}/repos/${slug}/commits?since=${encodeURIComponent(sinceIso)}&per_page=${DIGEST_PAGE_SIZE}`,
+      headers,
+      timeoutMs: 15_000,
+    }),
+    httpRequest({
+      method: 'GET',
+      url: `${base}/repos/${slug}/pulls?state=closed&sort=updated&direction=desc&per_page=50`,
+      headers,
+      timeoutMs: 15_000,
+    }),
+    httpRequest({
+      method: 'GET',
+      url: `${base}/repos/${slug}/pulls?state=open&per_page=${DIGEST_PAGE_SIZE}`,
+      headers,
+      timeoutMs: 15_000,
+    }),
+    httpRequest({
+      method: 'GET',
+      url: `${base}/repos/${slug}/actions/runs?created=${encodeURIComponent('>=' + sinceIso)}&per_page=${DIGEST_PAGE_SIZE}`,
+      headers,
+      timeoutMs: 15_000,
+    }),
+  ]);
+
+  // Commits are the core of the digest — surface their failure.
+  if (commitsR.status === 'rejected') throw new Error(String(commitsR.reason));
+  if (!commitsR.value.ok) {
+    throw new Error(hintForStatus(commitsR.value.status, 'GitHub', commitsR.value.headers));
+  }
+
+  const rawCommits = parseJson<GithubCommitRaw[]>(commitsR.value) ?? [];
+  const commits: GitCommit[] = rawCommits.map((c) => ({
+    message: c.commit.message.split('\n')[0],
+    author: c.commit.author?.name ?? c.author?.login ?? 'unknown',
+    date: c.commit.author?.date ?? '',
+    webUrl: c.html_url,
+  }));
+
+  let mergedMrs: GitMr[] = [];
+  let mergedMrCount = 0;
+  let mergedTruncated = false;
+  if (mergedR.status === 'fulfilled' && mergedR.value.ok) {
+    const raw = parseJson<GithubMergedPrRaw[]>(mergedR.value) ?? [];
+    const merged = raw.filter((pr) => pr.merged_at !== null && pr.merged_at >= sinceIso);
+    mergedMrCount = merged.length;
+    // The 50-item closed-PR page can be exhausted by closed-unmerged PRs —
+    // the count is a lower bound when the page is full.
+    mergedTruncated = raw.length === 50;
+    mergedMrs = merged.slice(0, 5).map((pr) => ({
+      title: pr.title,
+      author: pr.user?.login ?? '',
+      webUrl: pr.html_url,
+      updatedAt: pr.merged_at ?? pr.updated_at,
+    }));
+  }
+
+  let openMrCount = 0;
+  if (openR.status === 'fulfilled' && openR.value.ok) {
+    openMrCount = (parseJson<GithubPrRaw[]>(openR.value) ?? []).length;
+  }
+
+  let failedPipelineCount: number | null = null;
+  if (runsR.status === 'fulfilled' && runsR.value.ok) {
+    const raw = parseJson<GithubRunsRaw>(runsR.value);
+    if (raw?.workflow_runs) {
+      failedPipelineCount = raw.workflow_runs.filter((r) => r.conclusion === 'failure').length;
+    }
+  }
+
+  return {
+    commitCount: commits.length,
+    commitsTruncated: rawCommits.length === DIGEST_PAGE_SIZE,
+    authors: topAuthors(commits),
+    mergedMrCount,
+    mergedTruncated,
+    openMrCount,
+    failedPipelineCount,
+    recentCommits: commits.slice(0, 5),
+    mergedMrs,
+  };
+}
+
+interface GitlabMergedMrRaw {
+  title: string;
+  web_url: string;
+  updated_at: string;
+  merged_at?: string | null;
+  author?: { username?: string };
+}
+
+async function fetchGitlabDigest(
+  host: string,
+  projectId: string,
+  token: string | null,
+  sinceIso: string,
+): Promise<Omit<GitDigest, 'projectId' | 'projectName' | 'provider'>> {
+  const encodedId = encodeURIComponent(projectId);
+  const base = `${host}/api/v4/projects/${encodedId}`;
+  const headers: Record<string, string> = {};
+  if (token) headers['PRIVATE-TOKEN'] = token;
+
+  // Note: the commits endpoint covers the DEFAULT BRANCH only (no ref_name /
+  // all=true) — feature-branch activity is not counted. Same tradeoff as the
+  // GitHub digest.
+  const [commitsR, mergedR, openR, pipelinesR] = await Promise.allSettled([
+    httpRequest({
+      method: 'GET',
+      url: `${base}/repository/commits?since=${encodeURIComponent(sinceIso)}&per_page=${DIGEST_PAGE_SIZE}`,
+      headers,
+      timeoutMs: 15_000,
+    }),
+    httpRequest({
+      method: 'GET',
+      url: `${base}/merge_requests?state=merged&updated_after=${encodeURIComponent(sinceIso)}&per_page=${DIGEST_PAGE_SIZE}`,
+      headers,
+      timeoutMs: 15_000,
+    }),
+    httpRequest({
+      method: 'GET',
+      url: `${base}/merge_requests?state=opened&per_page=${DIGEST_PAGE_SIZE}`,
+      headers,
+      timeoutMs: 15_000,
+    }),
+    httpRequest({
+      method: 'GET',
+      url: `${base}/pipelines?status=failed&updated_after=${encodeURIComponent(sinceIso)}&per_page=${DIGEST_PAGE_SIZE}`,
+      headers,
+      timeoutMs: 15_000,
+    }),
+  ]);
+
+  if (commitsR.status === 'rejected') throw new Error(String(commitsR.reason));
+  if (!commitsR.value.ok) {
+    throw new Error(hintForStatus(commitsR.value.status, 'GitLab', commitsR.value.headers));
+  }
+
+  const rawCommits = parseJson<GitlabCommitRaw[]>(commitsR.value) ?? [];
+  const commits: GitCommit[] = rawCommits.map((c) => ({
+    message: c.title,
+    author: c.author_name,
+    date: c.created_at,
+    webUrl: c.web_url,
+  }));
+
+  let mergedMrs: GitMr[] = [];
+  let mergedMrCount = 0;
+  let mergedTruncated = false;
+  if (mergedR.status === 'fulfilled' && mergedR.value.ok) {
+    const raw = parseJson<GitlabMergedMrRaw[]>(mergedR.value) ?? [];
+    // updated_after over-matches (any update bumps it); require merged_at
+    // inside the window — symmetric with the GitHub digest.
+    const merged = raw.filter((mr) => mr.merged_at != null && mr.merged_at >= sinceIso);
+    mergedMrCount = merged.length;
+    mergedTruncated = raw.length === DIGEST_PAGE_SIZE;
+    mergedMrs = merged.slice(0, 5).map((mr) => ({
+      title: mr.title,
+      author: mr.author?.username ?? '',
+      webUrl: mr.web_url,
+      updatedAt: mr.merged_at ?? mr.updated_at,
+    }));
+  }
+
+  let openMrCount = 0;
+  if (openR.status === 'fulfilled' && openR.value.ok) {
+    openMrCount = (parseJson<GitlabMrRaw[]>(openR.value) ?? []).length;
+  }
+
+  let failedPipelineCount: number | null = null;
+  if (pipelinesR.status === 'fulfilled' && pipelinesR.value.ok) {
+    // Server-filtered by status=failed — just count the page.
+    const raw = parseJson<GitlabPipelineRaw[]>(pipelinesR.value) ?? [];
+    failedPipelineCount = raw.length;
+  }
+
+  return {
+    commitCount: commits.length,
+    commitsTruncated: rawCommits.length === DIGEST_PAGE_SIZE,
+    authors: topAuthors(commits),
+    mergedMrCount,
+    mergedTruncated,
+    openMrCount,
+    failedPipelineCount,
+    recentCommits: commits.slice(0, 5),
+    mergedMrs,
+  };
+}
+
+/**
+ * Period summary for one project. Returns null when the project has no git
+ * provider/repo configured. Throws with a readable message on API failure.
+ */
+export async function fetchGitDigest(p: Project, sinceIso: string): Promise<GitDigest | null> {
+  if (p.gitProvider === 'none') return null;
+
+  const hasRepoInfo =
+    (p.gitProjectId && p.gitProjectId.trim() !== '') ||
+    (p.repoUrl && p.repoUrl.trim() !== '');
+  if (!hasRepoInfo) return null;
+
+  const token = await getSecret(secretKeys.gitToken(p.id));
+
+  if (p.gitProvider === 'github') {
+    const slug =
+      p.gitProjectId && p.gitProjectId.includes('/')
+        ? p.gitProjectId
+        : repoSlugFromUrl(p.repoUrl);
+    const data = await fetchGithubDigest(slug, token, sinceIso);
+    return { projectId: p.id, projectName: p.name, provider: 'github', ...data };
+  }
+
+  const host = gitlabHostFromUrl(p.repoUrl);
+  const projectId =
+    p.gitProjectId && p.gitProjectId.trim() !== '' ? p.gitProjectId : repoSlugFromUrl(p.repoUrl);
+  const data = await fetchGitlabDigest(host, projectId, token, sinceIso);
+  return { projectId: p.id, projectName: p.name, provider: 'gitlab', ...data };
 }
 
 // ---------------------------------------------------------------------------

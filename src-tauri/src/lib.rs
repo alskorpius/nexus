@@ -89,6 +89,19 @@ fn redact_url(message: &str, url: &str) -> String {
     out
 }
 
+/// reqwest's Display hides the underlying cause (DNS, refused, TLS, timeout)
+/// in the error source chain — walk it so the UI shows something actionable.
+fn describe_request_error(e: &reqwest::Error, url: &str) -> String {
+    let mut msg = e.to_string();
+    let mut source = std::error::Error::source(e);
+    while let Some(s) = source {
+        msg.push_str(": ");
+        msg.push_str(&s.to_string());
+        source = std::error::Error::source(s);
+    }
+    redact_url(&msg, url)
+}
+
 #[tauri::command]
 async fn http_request(
     method: String,
@@ -119,7 +132,7 @@ async fn http_request(
     let response = builder
         .send()
         .await
-        .map_err(|e| redact_url(&e.to_string(), &url))?;
+        .map_err(|e| describe_request_error(&e, &url))?;
 
     let status = response.status().as_u16();
     let ok = response.status().is_success();
@@ -135,7 +148,7 @@ async fn http_request(
     let body_bytes = response
         .bytes()
         .await
-        .map_err(|e| redact_url(&e.to_string(), &url))?;
+        .map_err(|e| describe_request_error(&e, &url))?;
     let body_str = String::from_utf8_lossy(&body_bytes).into_owned();
 
     Ok(HttpResponse {

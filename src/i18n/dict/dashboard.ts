@@ -5,6 +5,7 @@ const en = {
   // Sidebar nav labels
   'nav.dashboard': 'Dashboard',
   'nav.projects': 'Projects',
+  'nav.digest': 'Git Digest',
   'nav.ai': 'AI Usage',
   'nav.settings': 'Settings',
   'nav.subBrand': 'Project Control Center',
@@ -37,6 +38,7 @@ const uk: Record<keyof typeof en, string> = {
   // Sidebar nav labels
   'nav.dashboard': 'Дашборд',
   'nav.projects': 'Проєкти',
+  'nav.digest': 'Git-дайджест',
   'nav.ai': 'Використання AI',
   'nav.settings': 'Налаштування',
   'nav.subBrand': 'Центр керування проєктами',
@@ -69,6 +71,7 @@ const es: Record<keyof typeof en, string> = {
   // Sidebar nav labels
   'nav.dashboard': 'Panel',
   'nav.projects': 'Proyectos',
+  'nav.digest': 'Resumen Git',
   'nav.ai': 'Uso de IA',
   'nav.settings': 'Configuración',
   'nav.subBrand': 'Centro de control de proyectos',
@@ -101,6 +104,7 @@ const de: Record<keyof typeof en, string> = {
   // Sidebar nav labels
   'nav.dashboard': 'Dashboard',
   'nav.projects': 'Projekte',
+  'nav.digest': 'Git-Digest',
   'nav.ai': 'KI-Nutzung',
   'nav.settings': 'Einstellungen',
   'nav.subBrand': 'Projektkontrollzentrum',
@@ -133,6 +137,7 @@ const fr: Record<keyof typeof en, string> = {
   // Sidebar nav labels
   'nav.dashboard': 'Tableau de bord',
   'nav.projects': 'Projets',
+  'nav.digest': 'Synthèse Git',
   'nav.ai': 'Utilisation IA',
   'nav.settings': 'Paramètres',
   'nav.subBrand': 'Centre de contrôle des projets',
@@ -165,6 +170,7 @@ const pt: Record<keyof typeof en, string> = {
   // Sidebar nav labels
   'nav.dashboard': 'Painel',
   'nav.projects': 'Projetos',
+  'nav.digest': 'Resumo Git',
   'nav.ai': 'Uso de IA',
   'nav.settings': 'Configurações',
   'nav.subBrand': 'Central de controle de projetos',
@@ -197,6 +203,7 @@ const zh: Record<keyof typeof en, string> = {
   // Sidebar nav labels
   'nav.dashboard': '仪表板',
   'nav.projects': '项目',
+  'nav.digest': 'Git 摘要',
   'nav.ai': 'AI 用量',
   'nav.settings': '设置',
   'nav.subBrand': '项目控制中心',
@@ -229,6 +236,7 @@ const ar: Record<keyof typeof en, string> = {
   // Sidebar nav labels
   'nav.dashboard': 'لوحة التحكم',
   'nav.projects': 'المشاريع',
+  'nav.digest': 'ملخص Git',
   'nav.ai': 'استخدام الذكاء الاصطناعي',
   'nav.settings': 'الإعدادات',
   'nav.subBrand': 'مركز التحكم في المشاريع',
