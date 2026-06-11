@@ -4,6 +4,8 @@ import { buildDepsReport, type DepsReport, type DepStatus } from '../adapters/de
 import { getSetting, setSetting } from '../lib/db';
 import { timeAgo } from '../lib/format';
 import { useI18n } from '../lib/i18n';
+import { buildDepsDoc } from '../lib/handover';
+import { copyText } from '../lib/clipboard';
 
 interface DependenciesCardProps {
   project: Project;
@@ -26,7 +28,13 @@ export function DependenciesCard({ project }: DependenciesCardProps) {
   const [report, setReport] = useState<DepsReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const cancelledRef = useRef(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+  }, []);
 
   const settingKey = `deps_report_${project.id}`;
 
@@ -88,6 +96,20 @@ export function DependenciesCard({ project }: DependenciesCardProps) {
             <span className="muted" style={{ fontSize: 12 }}>
               {t('detail.deps.lastChecked', { ago: timeAgo(report.generatedAt) })}
             </span>
+          )}
+          {copied && <span className="settings-saved">{t('detail.deps.aiCopied')}</span>}
+          {report && report.deps.length > 0 && (
+            <button
+              className="btn btn--ghost btn--sm"
+              onClick={async () => {
+                const ok = await copyText(buildDepsDoc(project.name, report));
+                if (!ok) return;
+                setCopied(true);
+                copiedTimer.current = setTimeout(() => setCopied(false), 2500);
+              }}
+            >
+              {t('detail.deps.aiCopy')}
+            </button>
           )}
           <button
             className="btn btn--ghost btn--sm btn--icon-label"
@@ -160,7 +182,7 @@ export function DependenciesCard({ project }: DependenciesCardProps) {
               </p>
               <div className="git-list">
                 {vulnerable.map(dep => (
-                  <div key={`${dep.ecosystem}:${dep.name}`} className="git-list__item" style={{ flexWrap: 'wrap', gap: 4 }}>
+                  <div key={`${dep.source}:${dep.ecosystem}:${dep.name}`} className="git-list__item" style={{ flexWrap: 'wrap', gap: 4 }}>
                     <div className="git-list__main" style={{ flexWrap: 'wrap', gap: 4 }}>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--critical)' }}>
                         {dep.name}
@@ -168,6 +190,11 @@ export function DependenciesCard({ project }: DependenciesCardProps) {
                       <span className="badge badge--muted" style={{ fontSize: 10 }}>{dep.ecosystem}</span>
                       {dep.specVersion && (
                         <span className="muted" style={{ fontSize: 12 }}>{dep.specVersion}</span>
+                      )}
+                      {report.manifests.length > 1 && dep.source && (
+                        <span className="muted" style={{ fontSize: 11, fontFamily: 'var(--font-mono)' }}>
+                          {dep.source}
+                        </span>
                       )}
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
@@ -204,7 +231,7 @@ export function DependenciesCard({ project }: DependenciesCardProps) {
               </p>
               <div className="git-list">
                 {outdatedVisible.map(dep => (
-                  <div key={`${dep.ecosystem}:${dep.name}`} className="git-list__item">
+                  <div key={`${dep.source}:${dep.ecosystem}:${dep.name}`} className="git-list__item">
                     <div className="git-list__main">
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}>{dep.name}</span>
                       <span className="muted" style={{ fontSize: 12 }}>
@@ -213,6 +240,11 @@ export function DependenciesCard({ project }: DependenciesCardProps) {
                       {dep.dev && (
                         <span className="badge badge--muted" style={{ fontSize: 10 }}>
                           {t('detail.deps.devLabel')}
+                        </span>
+                      )}
+                      {report.manifests.length > 1 && dep.source && (
+                        <span className="muted" style={{ fontSize: 11, fontFamily: 'var(--font-mono)' }}>
+                          {dep.source}
                         </span>
                       )}
                     </div>

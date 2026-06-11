@@ -1,30 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Project, ProjectStatus } from '../types';
 import { buildHandoverDoc, saveHandoverDoc } from '../lib/handover';
+import { copyText } from '../lib/clipboard';
 import { useI18n } from '../lib/i18n';
 
 interface HandoverModalProps {
   project: Project;
   status: ProjectStatus | undefined;
   onClose: () => void;
-}
-
-async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    // Webview clipboard permission fallback.
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    const ok = document.execCommand('copy');
-    document.body.removeChild(ta);
-    return ok;
-  }
 }
 
 export function HandoverModal({ project, status, onClose }: HandoverModalProps) {

@@ -4,11 +4,12 @@ import { getSecret, secretKeys } from '../lib/secrets';
 
 // Dependency staleness + vulnerability report.
 //
-// v1 scope (deliberate):
-// - Manifests: package.json (npm) and requirements.txt (PyPI) at the REPO
-//   ROOT of the DEFAULT BRANCH, fetched via the GitHub/GitLab APIs.
+// Scope (deliberate):
+// - Manifests: package.json (npm) and requirements.txt (PyPI) anywhere in the
+//   DEFAULT BRANCH tree (vendor/build dirs excluded, capped at 10 manifests),
+//   fetched via the GitHub/GitLab APIs.
 // - Versions compared are the MANIFEST SPECS (declared minimums), not
-//   lockfile-resolved versions — lockfile parsing is out of scope for v1.
+//   lockfile-resolved versions — lockfile parsing is out of scope.
 // - Vulnerabilities via OSV.dev (no auth required).
 
 export type DepEcosystem = 'npm' | 'PyPI';
@@ -30,6 +31,8 @@ export interface DepStatus {
   raw: string;
   /** devDependencies (npm only). */
   dev: boolean;
+  /** Manifest path this dep came from, e.g. 'api/requirements.txt'. */
+  source: string;
   latest: string | null;
   staleness: Staleness;
   vulns: DepVuln[];
@@ -54,6 +57,31 @@ export interface DepsReport {
 const REGISTRY_TIMEOUT = 10_000;
 const CONCURRENCY = 8;
 const OSV_DETAIL_CAP = 15;
+const MAX_MANIFESTS = 10;
+
+const MANIFEST_NAMES = new Set(['package.json', 'requirements.txt']);
+// Directories whose manifests are vendored/generated — not the project's own.
+const SKIP_DIRS = new Set([
+  'node_modules', 'vendor', 'dist', 'build', 'out', 'target',
+  'venv', '.venv', 'env', '__pycache__', 'site-packages',
+  'examples', 'fixtures', 'test_data', 'testdata',
+]);
+
+function isWantedManifest(path: string): boolean {
+  const parts = path.split('/');
+  const base = parts[parts.length - 1];
+  if (!MANIFEST_NAMES.has(base)) return false;
+  return !parts.slice(0, -1).some(seg => SKIP_DIRS.has(seg) || seg.startsWith('.'));
+}
+
+/** Root manifests first, then by depth, then alphabetically. */
+function sortManifestPaths(paths: string[]): string[] {
+  return [...paths].sort((a, b) => {
+    const da = a.split('/').length;
+    const db = b.split('/').length;
+    return da - db || a.localeCompare(b);
+  });
+}
 
 // ── Small concurrency pool ───────────────────────────────────────────────────
 
@@ -98,6 +126,75 @@ function gitlabHost(p: Project): string {
   return 'https://gitlab.com';
 }
 
+// ── Manifest discovery (recursive tree listing) ──────────────────────────────
+
+interface GithubTreeResponse {
+  tree?: Array<{ path?: string; type?: string }>;
+  truncated?: boolean;
+}
+
+async function listGithubManifests(slug: string, token: string | null): Promise<string[]> {
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  // Trees API needs a real ref — resolve the default branch first.
+  const repoR = await httpRequest({
+    method: 'GET',
+    url: `https://api.github.com/repos/${slug}`,
+    headers,
+    timeoutMs: REGISTRY_TIMEOUT,
+  });
+  if (!repoR.ok) throw new Error(`GitHub ${repoR.status} while resolving the default branch`);
+  const branch = parseJson<{ default_branch?: string }>(repoR)?.default_branch ?? 'main';
+
+  const r = await httpRequest({
+    method: 'GET',
+    url: `https://api.github.com/repos/${slug}/git/trees/${encodeURIComponent(branch)}?recursive=1`,
+    headers,
+    timeoutMs: 20_000,
+  });
+  if (!r.ok) throw new Error(`GitHub ${r.status} while listing the repository tree`);
+  const doc = parseJson<GithubTreeResponse>(r);
+  return (doc?.tree ?? [])
+    .filter(e => e.type === 'blob' && typeof e.path === 'string' && isWantedManifest(e.path))
+    .map(e => e.path as string);
+}
+
+interface GitlabTreeEntry {
+  path?: string;
+  type?: string;
+}
+
+async function listGitlabManifests(
+  host: string,
+  encodedId: string,
+  headers: Record<string, string>,
+  ref: string,
+): Promise<string[]> {
+  const found: string[] = [];
+  // Paginated recursive listing; bounded to keep huge repos cheap.
+  for (let page = 1; page <= 10; page++) {
+    const r = await httpRequest({
+      method: 'GET',
+      url: `${host}/api/v4/projects/${encodedId}/repository/tree?recursive=true&ref=${encodeURIComponent(ref)}&per_page=100&page=${page}`,
+      headers,
+      timeoutMs: 20_000,
+    });
+    if (!r.ok) throw new Error(`GitLab ${r.status} while listing the repository tree`);
+    const entries = parseJson<GitlabTreeEntry[]>(r) ?? [];
+    for (const e of entries) {
+      if (e.type === 'blob' && typeof e.path === 'string' && isWantedManifest(e.path)) {
+        found.push(e.path);
+      }
+    }
+    if (entries.length < 100) break;
+  }
+  return found;
+}
+
 /** Resolve the GitLab default branch (the files raw endpoint requires a real ref). */
 async function gitlabDefaultBranch(
   host: string,
@@ -132,9 +229,11 @@ async function fetchRepoFile(
       'X-GitHub-Api-Version': '2022-11-28',
     };
     if (token) headers['Authorization'] = `Bearer ${token}`;
+    // Encode per segment — slashes must stay as path separators for GitHub.
+    const encodedPath = path.split('/').map(encodeURIComponent).join('/');
     const r = await httpRequest({
       method: 'GET',
-      url: `https://api.github.com/repos/${repoSlug(p)}/contents/${encodeURIComponent(path)}`,
+      url: `https://api.github.com/repos/${repoSlug(p)}/contents/${encodedPath}`,
       headers,
       timeoutMs: REGISTRY_TIMEOUT,
     });
@@ -198,9 +297,10 @@ interface ParsedDep {
   specVersion: string | null;
   raw: string;
   dev: boolean;
+  source: string;
 }
 
-function parsePackageJson(content: string): ParsedDep[] {
+function parsePackageJson(content: string, source: string): ParsedDep[] {
   let pkg: unknown;
   try {
     pkg = JSON.parse(content);
@@ -223,6 +323,7 @@ function parsePackageJson(content: string): ParsedDep[] {
         specVersion: isRegistry ? extractVersion(spec) : null,
         raw: spec,
         dev,
+        source,
       });
     }
   }
@@ -234,7 +335,7 @@ function normalizePyName(name: string): string {
   return name.toLowerCase().replace(/[-_.]+/g, '-');
 }
 
-function parseRequirementsTxt(content: string): ParsedDep[] {
+function parseRequirementsTxt(content: string, source: string): ParsedDep[] {
   const out: ParsedDep[] = [];
   for (const rawLine of content.split('\n')) {
     const line = rawLine.trim();
@@ -251,6 +352,7 @@ function parseRequirementsTxt(content: string): ParsedDep[] {
       specVersion: spec ? extractVersion(spec) : null,
       raw: line,
       dev: false,
+      source,
     });
   }
   return out;
@@ -370,7 +472,7 @@ export async function buildDepsReport(p: Project): Promise<DepsReport> {
 
   const token = await getSecret(secretKeys.gitToken(p.id));
 
-  // Resolve the GitLab default branch once for both file fetches.
+  // Resolve the GitLab default branch once for the tree listing + file fetches.
   let gitlabRef: string | undefined;
   if (p.gitProvider === 'gitlab') {
     const host = gitlabHost(p);
@@ -381,30 +483,72 @@ export async function buildDepsReport(p: Project): Promise<DepsReport> {
     gitlabRef = await gitlabDefaultBranch(host, encodeURIComponent(projectId), headers);
   }
 
-  const [pkgJson, reqTxt] = await Promise.all([
-    fetchRepoFile(p, token, 'package.json', gitlabRef),
-    fetchRepoFile(p, token, 'requirements.txt', gitlabRef),
-  ]);
-
-  const manifests: string[] = [];
-  const parsed: ParsedDep[] = [];
-  if (pkgJson !== null) {
-    manifests.push('package.json');
-    parsed.push(...parsePackageJson(pkgJson));
+  // Discover manifests anywhere in the tree; fall back to root-only probing
+  // if the tree listing is unavailable (huge/truncated repo, permissions).
+  let manifestPaths: string[];
+  try {
+    if (p.gitProvider === 'github') {
+      manifestPaths = await listGithubManifests(repoSlug(p), token);
+    } else {
+      const host = gitlabHost(p);
+      const projectId =
+        p.gitProjectId && p.gitProjectId.trim() !== '' ? p.gitProjectId : repoSlug(p);
+      const headers: Record<string, string> = {};
+      if (token) headers['PRIVATE-TOKEN'] = token;
+      manifestPaths = await listGitlabManifests(
+        host,
+        encodeURIComponent(projectId),
+        headers,
+        gitlabRef ?? 'main',
+      );
+    }
+  } catch {
+    manifestPaths = ['package.json', 'requirements.txt'];
   }
-  if (reqTxt !== null) {
-    manifests.push('requirements.txt');
-    parsed.push(...parseRequirementsTxt(reqTxt));
-  }
+  manifestPaths = sortManifestPaths(manifestPaths).slice(0, MAX_MANIFESTS);
 
-  // Latest versions (registry lookups are public + unauthenticated).
-  const latests = await mapPool(parsed, CONCURRENCY, async d => {
+  const contents = await mapPool(manifestPaths, 4, async path => {
     try {
-      return d.ecosystem === 'npm' ? await fetchLatestNpm(d.name) : await fetchLatestPypi(d.name);
-    } catch {
+      return await fetchRepoFile(p, token, path, gitlabRef);
+    } catch (err) {
+      // Root probe must surface real errors; discovered paths are best-effort.
+      if (manifestPaths.length <= 2) throw err;
       return null;
     }
   });
+
+  const manifests: string[] = [];
+  const parsed: ParsedDep[] = [];
+  for (let i = 0; i < manifestPaths.length; i++) {
+    const content = contents[i];
+    if (content === null) continue;
+    const path = manifestPaths[i];
+    manifests.push(path);
+    const base = path.split('/').pop() ?? path;
+    if (base === 'package.json') {
+      parsed.push(...parsePackageJson(content, path));
+    } else {
+      parsed.push(...parseRequirementsTxt(content, path));
+    }
+  }
+
+  // Latest versions (public registries) — deduped across manifests so the
+  // same package is looked up once.
+  const uniqueKeys = [...new Set(parsed.map(d => `${d.ecosystem}:${d.name}`))];
+  const latestByKey = new Map<string, string | null>();
+  await mapPool(uniqueKeys, CONCURRENCY, async key => {
+    const [eco, ...nameParts] = key.split(':');
+    const name = nameParts.join(':');
+    try {
+      latestByKey.set(
+        key,
+        eco === 'npm' ? await fetchLatestNpm(name) : await fetchLatestPypi(name),
+      );
+    } catch {
+      latestByKey.set(key, null);
+    }
+  });
+  const latests = parsed.map(d => latestByKey.get(`${d.ecosystem}:${d.name}`) ?? null);
 
   // Vulnerabilities (best-effort).
   let vulnIds = new Map<number, string[]>();

@@ -120,6 +120,8 @@ const en = {
   'deps.staleness.patch': 'patch',
   'deps.staleness.current': 'current',
   'deps.staleness.unknown': 'unknown',
+  'deps.aiCopy': 'Copy for AI',
+  'deps.aiCopied': 'Copied',
 
   // Section: AI Handover
   'handover.button': 'AI Context',
@@ -240,6 +242,8 @@ const uk: Record<keyof typeof en, string> = {
   'deps.staleness.patch': 'patch',
   'deps.staleness.current': 'актуально',
   'deps.staleness.unknown': 'невідомо',
+  'deps.aiCopy': 'Скопіювати для AI',
+  'deps.aiCopied': 'Скопійовано',
 
   // Section: AI Handover
   'handover.button': 'Контекст для AI',
@@ -373,6 +377,8 @@ const es: Record<keyof typeof en, string> = {
   'deps.staleness.patch': 'patch',
   'deps.staleness.current': 'actual',
   'deps.staleness.unknown': 'desconocido',
+  'deps.aiCopy': 'Copiar para IA',
+  'deps.aiCopied': 'Copiado',
 
   // Section: AI Handover
   'handover.button': 'Contexto para IA',
@@ -506,6 +512,8 @@ const de: Record<keyof typeof en, string> = {
   'deps.staleness.patch': 'patch',
   'deps.staleness.current': 'aktuell',
   'deps.staleness.unknown': 'unbekannt',
+  'deps.aiCopy': 'Für KI kopieren',
+  'deps.aiCopied': 'Kopiert',
 
   // Section: AI Handover
   'handover.button': 'KI-Kontext',
@@ -639,6 +647,8 @@ const fr: Record<keyof typeof en, string> = {
   'deps.staleness.patch': 'patch',
   'deps.staleness.current': 'à jour',
   'deps.staleness.unknown': 'inconnu',
+  'deps.aiCopy': "Copier pour l'IA",
+  'deps.aiCopied': 'Copié',
 
   // Section: AI Handover
   'handover.button': 'Contexte IA',
@@ -772,6 +782,8 @@ const pt: Record<keyof typeof en, string> = {
   'deps.staleness.patch': 'patch',
   'deps.staleness.current': 'atualizado',
   'deps.staleness.unknown': 'desconhecido',
+  'deps.aiCopy': 'Copiar para IA',
+  'deps.aiCopied': 'Copiado',
 
   // Section: AI Handover
   'handover.button': 'Contexto para IA',
@@ -905,6 +917,8 @@ const zh: Record<keyof typeof en, string> = {
   'deps.staleness.patch': 'patch',
   'deps.staleness.current': '最新',
   'deps.staleness.unknown': '未知',
+  'deps.aiCopy': '复制给 AI',
+  'deps.aiCopied': '已复制',
 
   // Section: AI Handover
   'handover.button': 'AI 上下文',
@@ -1038,6 +1052,8 @@ const ar: Record<keyof typeof en, string> = {
   'deps.staleness.patch': 'patch',
   'deps.staleness.current': 'محدَّث',
   'deps.staleness.unknown': 'غير معروف',
+  'deps.aiCopy': 'نسخ لـ AI',
+  'deps.aiCopied': 'تم النسخ',
 
   // Section: AI Handover
   'handover.button': 'سياق AI',
