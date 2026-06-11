@@ -29,6 +29,9 @@ fn http_client() -> &'static reqwest::Client {
         reqwest::Client::builder()
             .use_rustls_tls()
             .gzip(true)
+            // GitHub (and good API citizenship in general) requires a
+            // User-Agent on every request — reqwest sends none by default.
+            .user_agent(concat!("nexus-pcc/", env!("CARGO_PKG_VERSION")))
             .build()
             .expect("failed to build reqwest client")
     })

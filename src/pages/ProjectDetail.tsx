@@ -7,6 +7,7 @@ import { TicketTable } from '../components/TicketTable';
 import { ProjectForm } from '../components/ProjectForm';
 import { PassphraseModal } from '../components/PassphraseModal';
 import { HealthHistoryCard } from '../components/HealthHistoryCard';
+import { DependenciesCard } from '../components/DependenciesCard';
 import { HandoverModal } from '../components/HandoverModal';
 import { timeAgo } from '../lib/format';
 import { computeHealthScore } from '../lib/score';
@@ -419,7 +420,15 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         )}
       </div>
 
-      {/* 5. Links */}
+      {/* 5. Dependencies */}
+      {project.gitProvider !== 'none' && (
+        <div className="section">
+          <h2 className="section__title">{t('detail.deps.cardTitle')}</h2>
+          <DependenciesCard project={project} />
+        </div>
+      )}
+
+      {/* 6. Links */}
       {hasLinks && (
         <div className="section">
           <h2 className="section__title">{t('detail.links.title')}</h2>
@@ -443,7 +452,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         </div>
       )}
 
-      {/* 6. Notes */}
+      {/* 7. Notes */}
       {project.notes && (
         <div className="section">
           <h2 className="section__title">{t('detail.notes.title')}</h2>

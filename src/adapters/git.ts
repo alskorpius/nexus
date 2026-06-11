@@ -130,7 +130,7 @@ async function fetchGithub(slug: string, token: string | null): Promise<GitInfo>
   if (commitsResult.status === 'fulfilled') {
     const r = commitsResult.value;
     if (!r.ok) {
-      throw new Error(hintForStatus(r.status, 'GitHub'));
+      throw new Error(hintForStatus(r.status, 'GitHub', r.headers));
     }
     const raw = parseJson<GithubCommitRaw[]>(r) ?? [];
     commits = raw.map((c) => ({
@@ -146,7 +146,7 @@ async function fetchGithub(slug: string, token: string | null): Promise<GitInfo>
   if (prsResult.status === 'fulfilled') {
     const r = prsResult.value;
     if (!r.ok) {
-      throw new Error(hintForStatus(r.status, 'GitHub'));
+      throw new Error(hintForStatus(r.status, 'GitHub', r.headers));
     }
     const raw = parseJson<GithubPrRaw[]>(r) ?? [];
     openMrCount = raw.length;
@@ -265,7 +265,7 @@ async function fetchGitlab(
   if (commitsResult.status === 'fulfilled') {
     const r = commitsResult.value;
     if (!r.ok) {
-      throw new Error(hintForStatus(r.status, 'GitLab'));
+      throw new Error(hintForStatus(r.status, 'GitLab', r.headers));
     }
     const raw = parseJson<GitlabCommitRaw[]>(r) ?? [];
     commits = raw.map((c) => ({
@@ -281,7 +281,7 @@ async function fetchGitlab(
   if (mrsResult.status === 'fulfilled') {
     const r = mrsResult.value;
     if (!r.ok) {
-      throw new Error(hintForStatus(r.status, 'GitLab'));
+      throw new Error(hintForStatus(r.status, 'GitLab', r.headers));
     }
     const raw = parseJson<GitlabMrRaw[]>(r) ?? [];
     openMrCount = raw.length;
