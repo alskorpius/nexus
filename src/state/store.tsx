@@ -24,7 +24,7 @@ import { recordHealthCheck, closeOpenIncident, deleteProjectHistory } from '../l
 import { notifyIncidentTransition, maybeNotifySsl } from '../lib/notify';
 
 export interface Nav {
-  page: 'dashboard' | 'projects' | 'project' | 'settings' | 'ai' | 'digest';
+  page: 'dashboard' | 'projects' | 'project' | 'settings' | 'ai' | 'digest' | 'utilities' | 'aimon';
   projectId?: number;
 }
 

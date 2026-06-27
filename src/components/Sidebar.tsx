@@ -16,6 +16,8 @@ const NAV_ITEMS: NavItem[] = [
   { page: 'projects',  labelKey: 'dashboard.nav.projects',  icon: '⊞' },
   { page: 'digest',    labelKey: 'dashboard.nav.digest',    icon: '≣' },
   { page: 'ai',        labelKey: 'dashboard.nav.ai',        icon: '◎' },
+  { page: 'aimon',     labelKey: 'dashboard.nav.aimon',     icon: '◉' },
+  { page: 'utilities', labelKey: 'dashboard.nav.utilities', icon: '⚒' },
   { page: 'settings',  labelKey: 'dashboard.nav.settings',  icon: '⚙' },
 ];
 

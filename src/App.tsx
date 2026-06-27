@@ -7,6 +7,8 @@ import { ProjectDetail } from './pages/ProjectDetail';
 import { Settings } from './pages/Settings';
 import { AiUsage } from './pages/AiUsage';
 import { Digest } from './pages/Digest';
+import { Utilities } from './pages/Utilities';
+import { AiMonitor } from './pages/AiMonitor';
 import { loadBranding } from './lib/theme';
 import { loadLanguage, useI18n } from './lib/i18n';
 
@@ -52,6 +54,8 @@ function AppContent() {
         {nav.page === 'settings' && <Settings />}
         {nav.page === 'ai' && <AiUsage />}
         {nav.page === 'digest' && <Digest />}
+        {nav.page === 'utilities' && <Utilities />}
+        {nav.page === 'aimon' && <AiMonitor />}
       </main>
     </div>
   );

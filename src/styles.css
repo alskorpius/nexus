@@ -1157,6 +1157,10 @@ input, select, textarea { font-family: var(--font-sans); }
   min-width: 0;
 }
 
+/* Inset variant: horizontal padding for git-lists placed directly inside a
+   padding:0 card (AI Monitor process/port lists). */
+.git-list--inset { padding: var(--space-2) var(--space-4); }
+
 .git-list__link {
   background: none;
   border: none;

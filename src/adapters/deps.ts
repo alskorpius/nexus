@@ -291,7 +291,7 @@ function extractVersion(spec: string): string | null {
   return `${m[1]}.${m[2] ?? '0'}.${m[3] ?? '0'}`;
 }
 
-interface ParsedDep {
+export interface ParsedDep {
   name: string;
   ecosystem: DepEcosystem;
   specVersion: string | null;
@@ -300,7 +300,7 @@ interface ParsedDep {
   source: string;
 }
 
-function parsePackageJson(content: string, source: string): ParsedDep[] {
+export function parsePackageJson(content: string, source: string): ParsedDep[] {
   let pkg: unknown;
   try {
     pkg = JSON.parse(content);
@@ -335,7 +335,7 @@ function normalizePyName(name: string): string {
   return name.toLowerCase().replace(/[-_.]+/g, '-');
 }
 
-function parseRequirementsTxt(content: string, source: string): ParsedDep[] {
+export function parseRequirementsTxt(content: string, source: string): ParsedDep[] {
   const out: ParsedDep[] = [];
   for (const rawLine of content.split('\n')) {
     const line = rawLine.trim();
@@ -532,6 +532,20 @@ export async function buildDepsReport(p: Project): Promise<DepsReport> {
     }
   }
 
+  return analyzeParsedDeps(parsed, manifests);
+}
+
+/**
+ * Resolve latest versions, classify staleness, and query OSV for a set of
+ * already-parsed dependencies. Shared by the repo scanner (buildDepsReport)
+ * and the paste-text analyzer (analyzePastedManifest). All registry/OSV
+ * lookups are best-effort: unreachable services degrade gracefully to
+ * `unknown` staleness / no vulns rather than failing the whole report.
+ */
+export async function analyzeParsedDeps(
+  parsed: ParsedDep[],
+  manifests: string[],
+): Promise<DepsReport> {
   // Latest versions (public registries) — deduped across manifests so the
   // same package is looked up once.
   const uniqueKeys = [...new Set(parsed.map(d => `${d.ecosystem}:${d.name}`))];
@@ -596,4 +610,56 @@ export async function buildDepsReport(p: Project): Promise<DepsReport> {
     deps,
     counts,
   };
+}
+
+export type ManifestKind = 'auto' | 'package.json' | 'requirements.txt';
+
+/** Heuristic: JSON-looking content is a package.json, everything else is requirements.txt. */
+function detectManifestKind(content: string): 'package.json' | 'requirements.txt' {
+  const trimmed = content.trimStart();
+  if (trimmed.startsWith('{')) return 'package.json';
+  try {
+    const v = JSON.parse(content);
+    if (v && typeof v === 'object') return 'package.json';
+  } catch {
+    // not JSON
+  }
+  return 'requirements.txt';
+}
+
+/**
+ * Analyze a manifest pasted as raw text (no repo access). Mirrors the repo
+ * scanner's pipeline — same staleness + OSV checks — but takes the manifest
+ * body directly. Throws a readable error when a package.json cannot be parsed.
+ */
+export async function analyzePastedManifest(
+  content: string,
+  kind: ManifestKind = 'auto',
+): Promise<DepsReport> {
+  const trimmed = content.trim();
+  if (!trimmed) throw new Error('Paste a package.json or requirements.txt first.');
+
+  const resolved = kind === 'auto' ? detectManifestKind(content) : kind;
+
+  let parsed: ParsedDep[];
+  if (resolved === 'package.json') {
+    try {
+      JSON.parse(content);
+    } catch (err) {
+      throw new Error(`Invalid package.json — could not parse JSON: ${String(err)}`);
+    }
+    parsed = parsePackageJson(content, 'package.json');
+  } else {
+    parsed = parseRequirementsTxt(content, 'requirements.txt');
+  }
+
+  if (parsed.length === 0) {
+    throw new Error(
+      resolved === 'package.json'
+        ? 'No dependencies found — package.json has no dependencies / devDependencies.'
+        : 'No dependencies found — no parseable requirement lines.',
+    );
+  }
+
+  return analyzeParsedDeps(parsed, [resolved]);
 }

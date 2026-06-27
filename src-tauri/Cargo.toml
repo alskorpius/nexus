@@ -1,6 +1,6 @@
 [package]
 name = "nexus"
-version = "0.1.2"
+version = "0.2.0"
 description = "Nexus — Local-First Project Control Center"
 authors = ["Rafiq Technologies"]
 license = "MIT"
@@ -31,3 +31,5 @@ x509-parser = "0.16"
 tauri-plugin-notification = "2.3.3"
 tauri-plugin-updater = "2.10.1"
 tauri-plugin-process = "2.3.1"
+sysinfo = "0.39"
+dirs = "5"

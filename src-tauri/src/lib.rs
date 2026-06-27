@@ -1,3 +1,4 @@
+mod aimon;
 mod ssl;
 
 use std::collections::HashMap;
@@ -363,6 +364,7 @@ pub fn run() {
             import_bundle,
             save_text_file,
             ssl::ssl_check,
+            aimon::ai_monitor,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

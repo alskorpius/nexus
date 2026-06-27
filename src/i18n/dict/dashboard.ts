@@ -7,6 +7,8 @@ const en = {
   'nav.projects': 'Projects',
   'nav.digest': 'Git Digest',
   'nav.ai': 'AI Usage',
+  'nav.aimon': 'AI Monitor',
+  'nav.utilities': 'Utilities',
   'nav.settings': 'Settings',
   'nav.subBrand': 'Project Control Center',
   // Empty state
@@ -40,6 +42,8 @@ const uk: Record<keyof typeof en, string> = {
   'nav.projects': 'Проєкти',
   'nav.digest': 'Git-дайджест',
   'nav.ai': 'Використання AI',
+  'nav.aimon': 'AI-монітор',
+  'nav.utilities': 'Утиліти',
   'nav.settings': 'Налаштування',
   'nav.subBrand': 'Центр керування проєктами',
   // Empty state
@@ -73,6 +77,8 @@ const es: Record<keyof typeof en, string> = {
   'nav.projects': 'Proyectos',
   'nav.digest': 'Resumen Git',
   'nav.ai': 'Uso de IA',
+  'nav.aimon': 'Monitor IA',
+  'nav.utilities': 'Utilidades',
   'nav.settings': 'Configuración',
   'nav.subBrand': 'Centro de control de proyectos',
   // Empty state
@@ -106,6 +112,8 @@ const de: Record<keyof typeof en, string> = {
   'nav.projects': 'Projekte',
   'nav.digest': 'Git-Digest',
   'nav.ai': 'KI-Nutzung',
+  'nav.aimon': 'KI-Monitor',
+  'nav.utilities': 'Werkzeuge',
   'nav.settings': 'Einstellungen',
   'nav.subBrand': 'Projektkontrollzentrum',
   // Empty state
@@ -139,6 +147,8 @@ const fr: Record<keyof typeof en, string> = {
   'nav.projects': 'Projets',
   'nav.digest': 'Synthèse Git',
   'nav.ai': 'Utilisation IA',
+  'nav.aimon': 'Moniteur IA',
+  'nav.utilities': 'Utilitaires',
   'nav.settings': 'Paramètres',
   'nav.subBrand': 'Centre de contrôle des projets',
   // Empty state
@@ -172,6 +182,8 @@ const pt: Record<keyof typeof en, string> = {
   'nav.projects': 'Projetos',
   'nav.digest': 'Resumo Git',
   'nav.ai': 'Uso de IA',
+  'nav.aimon': 'Monitor de IA',
+  'nav.utilities': 'Utilitários',
   'nav.settings': 'Configurações',
   'nav.subBrand': 'Central de controle de projetos',
   // Empty state
@@ -205,6 +217,8 @@ const zh: Record<keyof typeof en, string> = {
   'nav.projects': '项目',
   'nav.digest': 'Git 摘要',
   'nav.ai': 'AI 用量',
+  'nav.aimon': 'AI 监控',
+  'nav.utilities': '实用工具',
   'nav.settings': '设置',
   'nav.subBrand': '项目控制中心',
   // Empty state
@@ -238,6 +252,8 @@ const ar: Record<keyof typeof en, string> = {
   'nav.projects': 'المشاريع',
   'nav.digest': 'ملخص Git',
   'nav.ai': 'استخدام الذكاء الاصطناعي',
+  'nav.aimon': 'مراقب الذكاء الاصطناعي',
+  'nav.utilities': 'الأدوات',
   'nav.settings': 'الإعدادات',
   'nav.subBrand': 'مركز التحكم في المشاريع',
   // Empty state
